@@ -122,44 +122,41 @@ function App() {
       favorites: old.favorites.includes(id) ? old.favorites.filter((x) => x !== id) : [...old.favorites, id],
     }));
   };
-  const sendCode = async () => {
-    if (!auth.username.trim() || !auth.phoneNumber.trim()) return notify('请填写用户名和手机号');
-    setSending(true);
-    try {
-      const response = await fetch('/api/send-code', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(auth),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || '验证码发送失败');
-      notify('短信验证码已发送');
-    } catch (error) {
-      notify(error.message);
-    } finally {
-      setSending(false);
-    }
+const sendCode = async () => {
+  if (!auth.username.trim() || !auth.phoneNumber.trim()) {
+    return notify('请填写用户名和手机号');
+  }
+
+  notify('测试验证码：123456');
+};
+
+const submitAuth = async (event) => {
+  event.preventDefault();
+
+  if (!auth.username.trim() || !auth.phoneNumber.trim()) {
+    return notify('请填写用户名和手机号');
+  }
+
+  if (auth.code !== '123456') {
+    return notify('验证码错误');
+  }
+
+  const users = loadJson(usersKey, {});
+  users[auth.username] = {
+    phone: auth.phoneNumber,
+    lastLoginAt: new Date().toISOString()
   };
-  const submitAuth = async (event) => {
-    event.preventDefault();
-    try {
-      const response = await fetch('/api/verify-code', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(auth),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || '验证码错误');
-      const users = loadJson(usersKey, {});
-      users[auth.username] = { phone: data.phone, lastLoginAt: new Date().toISOString() };
-      saveJson(usersKey, users);
-      setActiveUser(auth.username);
-      setSaved({ ...blankUser(), ...loadJson(userKey(auth.username), {}), phone: data.phone });
-      notify('登录成功');
-    } catch (error) {
-      notify(error.message);
-    }
-  };
+
+  saveJson(usersKey, users);
+  setActiveUser(auth.username);
+  setSaved({
+    ...blankUser(),
+    ...loadJson(userKey(auth.username), {}),
+    phone: auth.phoneNumber
+  });
+
+  notify('登录成功');
+};
   const submitOrder = () => {
     if (!requireLogin()) return;
     if (!cartItems.length) return notify('购物车为空');
