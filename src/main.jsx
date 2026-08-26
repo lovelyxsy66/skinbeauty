@@ -224,10 +224,11 @@ function App() {
           <span className="result-count">{filtered.length} 件商品</span>
         </section>
         <section className="product-grid">
-          {filtered.map((product) => (
+          {filtered.map((product, index) => (
             <ProductRow
               key={product.id}
               product={product}
+              rank={index + 1}
               qty={saved.cart[product.id] || 0}
               liked={saved.favorites.includes(product.id)}
               onQty={updateCart}
@@ -266,21 +267,44 @@ function Select({ label, value, onChange, options }) {
 }
 
 function ProductImage({ product }) {
+  const [source, setSource] = useState(product.thumbnailUrl || product.imageUrl);
+  const [failed, setFailed] = useState(false);
+  const fallback = product.imageUrl && source !== product.imageUrl ? product.imageUrl : '';
+
+  if (failed) {
+    return (
+      <div className="product-image image-fallback">
+        <span>{String(product.brand || product.displayTitle || 'S').slice(0, 1).toUpperCase()}</span>
+      </div>
+    );
+  }
+
   return (
     <div className="product-image">
-      <img src={product.thumbnailUrl || product.imageUrl} alt={product.displayTitle} loading="lazy" />
+      <img
+        src={source}
+        alt={product.displayTitle}
+        loading="lazy"
+        onError={() => (fallback ? setSource(fallback) : setFailed(true))}
+      />
     </div>
   );
 }
 
-function ProductRow({ product, qty, liked, onQty, onLike }) {
+function ProductRow({ product, rank, qty, liked, onQty, onLike }) {
   return (
     <article className="product-card">
+      <span className="product-rank">{rank}</span>
       <ProductImage product={product} />
       <div className="product-body">
         <div className="product-meta"><span>{product.brand}</span><em>{product.discountRate}%</em></div>
         <h2>{product.displayTitle}</h2>
         <p>{product.displaySpec || product.category}</p>
+        <div className="mobile-price">
+          <em>{product.discountRate}%</em>
+          <strong>{money(product.price)}</strong>
+          {product.listPrice > product.price && <span>{money(product.listPrice)}</span>}
+        </div>
         <div className="tag-row">{product.badges.map((tag) => <span key={tag}>{tag}</span>)}</div>
       </div>
       <div className="product-actions">
@@ -293,7 +317,10 @@ function ProductRow({ product, qty, liked, onQty, onLike }) {
             <button onClick={() => onQty(product.id, qty + 1)} aria-label="增加">+</button>
           </div>
         ) : (
-          <button className="buy-button" onClick={() => onQty(product.id, 1)}>加入</button>
+          <button className="buy-button" onClick={() => onQty(product.id, 1)}>
+            <ShoppingBag size={15} />
+            <span>加入</span>
+          </button>
         )}
       </div>
     </article>
