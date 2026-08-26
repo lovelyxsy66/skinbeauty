@@ -228,7 +228,6 @@ function App() {
             <ProductRow
               key={product.id}
               product={product}
-              rank={index + 1}
               qty={saved.cart[product.id] || 0}
               liked={saved.favorites.includes(product.id)}
               onQty={updateCart}
@@ -291,10 +290,9 @@ function ProductImage({ product }) {
   );
 }
 
-function ProductRow({ product, rank, qty, liked, onQty, onLike }) {
+function ProductRow({ product, qty, liked, onQty, onLike }) {
   return (
     <article className="product-card">
-      <span className="product-rank">{rank}</span>
       <ProductImage product={product} />
       <div className="product-body">
         <div className="product-meta"><span>{product.brand}</span><em>{product.discountRate}%</em></div>
