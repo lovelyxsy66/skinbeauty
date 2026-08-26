@@ -3,3 +3,5 @@ dist/
 *.png
 .env
 .env.local
+
+.vercel
