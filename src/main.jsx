@@ -43,7 +43,7 @@ function enrichProduct(product, index) {
   const tags = [product.category, product.brand, product.discountRate >= 20 ? '高折扣' : '', index % 9 === 0 ? '热卖' : '']
     .filter(Boolean)
     .slice(0, 3);
-  return { ...product, displayTitle: title, displaySpec: spec, badges: tags };
+  return { ...product, displayTitle: title, displaySpec: spec, effect: product.effect || product.category, badges: tags };
 }
 
 const products = rawProducts.map(enrichProduct);
@@ -52,8 +52,9 @@ function App() {
   const [activeUser, setActiveUser] = useState(() => localStorage.getItem(activeKey) || '');
   const [saved, setSaved] = useState(() => (activeUser ? { ...blankUser(), ...loadJson(userKey(activeUser), {}) } : blankUser()));
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState('全部');
-  const [sort, setSort] = useState('推荐');
+  const [brand, setBrand] = useState('全部品牌');
+  const [effect, setEffect] = useState('全部功效');
+  const [sort, setSort] = useState('推荐排序');
   const [panel, setPanel] = useState('');
   const [toast, setToast] = useState('');
   const [auth, setAuth] = useState({ username: '', countryCode: '+82', phoneNumber: '', code: '' });
@@ -73,20 +74,23 @@ function App() {
     }
   }, [activeUser, saved]);
 
-  const categories = useMemo(() => ['全部', ...Array.from(new Set(products.map((p) => p.category)))], []);
+  const brands = useMemo(() => ['全部品牌', ...Array.from(new Set(products.map((p) => p.brand))).sort()], []);
+  const effects = useMemo(() => ['全部功效', ...Array.from(new Set(products.map((p) => p.effect))).sort()], []);
   const filtered = useMemo(() => {
     const q = normalize(query);
     const list = products.filter((p) => {
-      const matchesCategory = category === '全部' || p.category === category;
+      const matchesBrand = brand === '全部品牌' || p.brand === brand;
+      const matchesEffect = effect === '全部功效' || p.effect === effect;
       const haystack = normalize([p.displayTitle, p.brand, p.category, p.displaySpec].join(' '));
-      return matchesCategory && (!q || haystack.includes(q));
+      return matchesBrand && matchesEffect && (!q || haystack.includes(q));
     });
     return [...list].sort((a, b) => {
-      if (sort === '价格低') return a.price - b.price;
-      if (sort === '折扣高') return b.discountRate - a.discountRate;
-      return b.discountRate - a.discountRate || a.price - b.price;
+      if (sort === '价格从低到高') return a.price - b.price;
+      if (sort === '价格从高到低') return b.price - a.price;
+      if (sort === '折扣优先') return b.discountRate - a.discountRate;
+      return 0;
     });
-  }, [query, category, sort]);
+  }, [query, brand, effect, sort]);
 
   const cartItems = Object.entries(saved.cart || {})
     .map(([id, qty]) => ({ product: products.find((p) => p.id === id), qty }))
@@ -219,9 +223,9 @@ function App() {
           <div><Home size={19} /><strong>转账结账</strong><span>提交后按订单发货</span></div>
         </section>
         <section className="filters">
-          <Select label="分类" value={category} onChange={setCategory} options={categories} />
-          <Select label="排序" value={sort} onChange={setSort} options={['推荐', '价格低', '折扣高']} />
-          <span className="result-count">{filtered.length} 件商品</span>
+          <Select label="品牌" value={brand} onChange={setBrand} options={brands} />
+          <Select label="功效" value={effect} onChange={setEffect} options={effects} />
+          <Select label="价格" value={sort} onChange={setSort} options={['推荐排序', '价格从低到高', '价格从高到低', '折扣优先']} />
         </section>
         <section className="product-grid">
           {filtered.map((product, index) => (
@@ -295,31 +299,30 @@ function ProductRow({ product, qty, liked, onQty, onLike }) {
     <article className="product-card">
       <ProductImage product={product} />
       <div className="product-body">
-        <div className="product-meta"><span>{product.brand}</span><em>{product.discountRate}%</em></div>
+        <div className="product-meta"><span>{product.brand}</span><span>正品</span></div>
         <h2>{product.displayTitle}</h2>
-        <p>{product.displaySpec || product.category}</p>
-        <div className="mobile-price">
-          <em>{product.discountRate}%</em>
-          <strong>{money(product.price)}</strong>
-          {product.listPrice > product.price && <span>{money(product.listPrice)}</span>}
-        </div>
+        {product.displaySpec && <div className="spec-line">{product.displaySpec}</div>}
         <div className="tag-row">{product.badges.map((tag) => <span key={tag}>{tag}</span>)}</div>
-      </div>
-      <div className="product-actions">
-        <strong>{money(product.price)}</strong>
-        <button className={liked ? 'icon-button liked' : 'icon-button'} onClick={() => onLike(product.id)} aria-label="收藏"><Heart size={17} /></button>
-        {qty ? (
-          <div className="quantity">
-            <button onClick={() => onQty(product.id, qty - 1)} aria-label="减少"><Minus size={14} /></button>
-            <span>{qty}</span>
-            <button onClick={() => onQty(product.id, qty + 1)} aria-label="增加">+</button>
-          </div>
-        ) : (
-          <button className="buy-button" onClick={() => onQty(product.id, 1)}>
-            <ShoppingBag size={15} />
-            <span>加入</span>
-          </button>
-        )}
+        <div className="price-row">
+          <strong>{money(product.price)}</strong>
+          {product.listPrice > product.price && <del>{money(product.listPrice)}</del>}
+          <span>{product.discountRate}%</span>
+        </div>
+        <div className="card-actions">
+          {qty ? (
+            <div className="quantity">
+              <button onClick={() => onQty(product.id, qty - 1)} aria-label="减少"><Minus size={14} /></button>
+              <span>{qty}</span>
+              <button onClick={() => onQty(product.id, qty + 1)} aria-label="增加">+</button>
+            </div>
+          ) : (
+            <button className="buy-button" onClick={() => onQty(product.id, 1)}>
+              <ShoppingBag size={17} />
+              <span>加入购物车</span>
+            </button>
+          )}
+          <button className={liked ? 'icon-button liked' : 'icon-button'} onClick={() => onLike(product.id)} aria-label="收藏"><Heart size={18} fill={liked ? 'currentColor' : 'none'} /></button>
+        </div>
       </div>
     </article>
   );

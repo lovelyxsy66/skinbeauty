@@ -67,14 +67,17 @@ main { max-width: 1440px; margin: 0 auto; padding: 18px clamp(16px, 4vw, 48px) 4
 .image-fallback span { display: grid; place-items: center; width: 70%; height: 70%; border: 1px solid #d8e4d8; border-radius: 8px; background: #fff; }
 .product-body { display: grid; align-content: start; flex: 1; gap: 10px; min-width: 0; padding: 15px; }
 .product-meta { display: flex; justify-content: space-between; gap: 8px; color: #5e6d61; font-size: 12px; font-weight: 950; }
-.product-meta em { color: #d43144; font-style: normal; }
+.product-meta span:last-child { color: #236739; background: #edf7df; border-radius: 999px; padding: 5px 8px; }
 .product-card h2 { display: -webkit-box; min-height: 42px; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 15px; font-weight: 900; line-height: 1.38; }
-.product-card p { min-height: 18px; color: #667166; font-size: 13px; font-weight: 800; }
-.mobile-price { display: none; }
+.spec-line { min-height: 18px; color: #667166; font-size: 13px; font-weight: 850; }
 .tag-row { display: flex; flex-wrap: wrap; gap: 4px; }
 .tag-row span { border-radius: 999px; background: #eff4ec; padding: 3px 6px; color: #526154; font-size: 11px; font-weight: 900; }
-.product-actions { display: grid; grid-template-columns: 1fr 36px minmax(76px, auto); gap: 8px; align-items: center; padding: 0 15px 15px; }
-.product-actions strong { font-size: 23px; line-height: 1; }
+.price-row { display: flex; align-items: flex-end; gap: 8px; margin-top: 2px; }
+.price-row strong { color: #111b15; font-size: 23px; line-height: 1; }
+.price-row del { color: #8d978b; font-size: 13px; }
+.price-row span { color: #e03948; font-size: 13px; font-weight: 950; }
+.card-actions { display: flex; align-items: center; gap: 8px; }
+.buy-button { display: inline-flex; flex: 1; align-items: center; justify-content: center; gap: 7px; padding: 0 13px; }
 .quantity { display: inline-flex; align-items: center; justify-content: center; height: 36px; border: 1px solid #dce4d7; border-radius: 8px; background: #fff; }
 .quantity button { width: 28px; height: 34px; border: 0; background: transparent; font-weight: 950; }
 .quantity span { min-width: 18px; text-align: center; font-weight: 950; }
@@ -134,7 +137,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 18px clamp(16px, 4vw, 48px) 4
   .user-pill span, .action-button span { max-width: 58px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   main { padding: 0 6px 72px; background: #fff; }
   .trust-strip { display: none; }
-  .filters { position: sticky; z-index: 8; top: 0; grid-template-columns: 1fr 1fr 54px; gap: 5px; margin: 0 -6px; padding: 6px; border-bottom: 1px solid #edf0ea; background: rgba(255,255,255,.98); }
+  .filters { position: sticky; z-index: 8; top: 0; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin: 0 -6px; padding: 6px; border-bottom: 1px solid #edf0ea; background: rgba(255,255,255,.98); }
   .filter-select { grid-template-columns: 30px 1fr; min-height: 30px; padding: 0 6px; border-radius: 6px; }
   .filter-select span, .result-count { font-size: 10px; }
   .result-count { justify-self: end; }
@@ -142,7 +145,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 18px clamp(16px, 4vw, 48px) 4
   .product-card {
     position: relative;
     display: grid;
-    grid-template-columns: 64px minmax(0, 1fr) 34px;
+    grid-template-columns: 64px minmax(0, 1fr);
     grid-template-rows: 84px;
     align-items: center;
     gap: 8px;
@@ -155,29 +158,30 @@ main { max-width: 1440px; margin: 0 auto; padding: 18px clamp(16px, 4vw, 48px) 4
   .product-rank { display: none; }
   .product-image { width: 64px; height: 64px; border: 1px solid #edf1eb; border-radius: 6px; }
   .product-image img { padding: 3px; }
-  .product-body { gap: 3px; align-content: center; padding: 6px 0; }
+  .product-body { position: relative; gap: 3px; align-content: center; padding: 6px 38px 6px 0; }
   .product-meta { justify-content: flex-start; gap: 6px; font-size: 11px; line-height: 1.1; }
   .product-meta span { max-width: 112px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .product-meta span:last-child { display: none; }
   .product-card h2 { min-height: 34px; font-size: 13px; font-weight: 880; line-height: 1.3; -webkit-line-clamp: 2; }
-  .product-card p { display: block; min-height: 12px; overflow: hidden; color: #7b857d; font-size: 11px; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
-  .mobile-price { display: flex; align-items: baseline; gap: 4px; min-width: 0; line-height: 1; }
-  .mobile-price em { color: #f13b4c; font-size: 12px; font-style: normal; font-weight: 950; }
-  .mobile-price strong { color: #111812; font-size: 14px; font-weight: 950; }
-  .mobile-price span { color: #a0a69f; font-size: 10px; text-decoration: line-through; }
+  .spec-line { display: block; min-height: 12px; overflow: hidden; color: #7b857d; font-size: 11px; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
   .tag-row { display: none; }
-  .product-actions {
-    grid-column: auto;
+  .price-row { align-items: baseline; gap: 4px; min-width: 0; margin-top: 0; line-height: 1; }
+  .price-row strong { color: #111812; font-size: 14px; font-weight: 950; }
+  .price-row del { color: #a0a69f; font-size: 10px; }
+  .price-row span { color: #f13b4c; font-size: 12px; font-weight: 950; }
+  .card-actions {
+    position: absolute;
+    top: 50%;
+    right: 2px;
     display: flex;
     flex-direction: column;
     align-content: center;
     justify-content: center;
     gap: 7px;
-    height: 100%;
-    padding: 0 2px 0 0;
+    transform: translateY(-50%);
   }
-  .product-actions > strong { display: none; }
-  .product-actions .icon-button { width: 28px; height: 28px; min-height: 28px; border: 0; background: transparent; color: #4f5a52; }
-  .product-actions .icon-button svg, .buy-button svg { width: 16px; height: 16px; }
+  .card-actions .icon-button { width: 28px; height: 28px; min-height: 28px; border: 0; background: transparent; color: #4f5a52; }
+  .card-actions .icon-button svg, .buy-button svg { width: 16px; height: 16px; }
   .buy-button {
     display: flex;
     align-items: center;
@@ -191,8 +195,8 @@ main { max-width: 1440px; margin: 0 auto; padding: 18px clamp(16px, 4vw, 48px) 4
     border: 0;
     background: transparent;
   }
-  .product-actions .buy-button { color: #4f5a52; }
-  .product-actions .buy-button span { display: none; }
+  .card-actions .buy-button { color: #4f5a52; }
+  .card-actions .buy-button span { display: none; }
   .quantity { width: 28px; height: 28px; min-height: 28px; border: 0; background: #eef5ef; font-size: 11px; }
   .quantity button { display: none; }
   .quantity span { min-width: 0; color: #1f6f48; font-size: 12px; }
