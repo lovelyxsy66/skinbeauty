@@ -43,7 +43,7 @@ function enrichProduct(product, index) {
   const tags = [product.category, product.brand, product.discountRate >= 20 ? '高折扣' : '', index % 9 === 0 ? '热卖' : '']
     .filter(Boolean)
     .slice(0, 3);
-  return { ...product, displayTitle: title, displaySpec: spec, effect: product.effect || product.category, badges: tags };
+  return { ...product, displayTitle: title, displaySpec: spec, effect: product.effect || product.category, officialUrl: product.officialProductUrl || product.officialUrl, badges: tags };
 }
 
 const products = rawProducts.map(enrichProduct);
@@ -323,6 +323,12 @@ function ProductRow({ product, qty, liked, onQty, onLike }) {
           )}
           <button className={liked ? 'icon-button liked' : 'icon-button'} onClick={() => onLike(product.id)} aria-label="收藏"><Heart size={18} fill={liked ? 'currentColor' : 'none'} /></button>
         </div>
+        {(product.showOlvyLink || product.showOfficialLink) && (
+          <div className="source-links">
+            {product.showOlvyLink && product.sourceSearchUrl && <a href={product.sourceSearchUrl} target="_blank" rel="noreferrer">和 olvy 比</a>}
+            {product.showOfficialLink && product.officialUrl && <a href={product.officialUrl} target="_blank" rel="noreferrer">官方商品页</a>}
+          </div>
+        )}
       </div>
     </article>
   );

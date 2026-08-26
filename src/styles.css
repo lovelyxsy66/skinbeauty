@@ -78,6 +78,8 @@ main { max-width: 1440px; margin: 0 auto; padding: 18px clamp(16px, 4vw, 48px) 4
 .price-row span { color: #e03948; font-size: 13px; font-weight: 950; }
 .card-actions { display: flex; align-items: center; gap: 8px; }
 .buy-button { display: inline-flex; flex: 1; align-items: center; justify-content: center; gap: 7px; padding: 0 13px; }
+.source-links { display: flex; align-items: center; gap: 12px; border-top: 1px solid #edf1e9; padding-top: 10px; }
+.source-links a { color: #216d41; font-size: 12px; font-weight: 800; }
 .quantity { display: inline-flex; align-items: center; justify-content: center; height: 36px; border: 1px solid #dce4d7; border-radius: 8px; background: #fff; }
 .quantity button { width: 28px; height: 34px; border: 0; background: transparent; font-weight: 950; }
 .quantity span { min-width: 18px; text-align: center; font-weight: 950; }
@@ -165,6 +167,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 18px clamp(16px, 4vw, 48px) 4
   .product-card h2 { min-height: 34px; font-size: 13px; font-weight: 880; line-height: 1.3; -webkit-line-clamp: 2; }
   .spec-line { display: block; min-height: 12px; overflow: hidden; color: #7b857d; font-size: 11px; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
   .tag-row { display: none; }
+  .source-links { display: none; }
   .price-row { align-items: baseline; gap: 4px; min-width: 0; margin-top: 0; line-height: 1; }
   .price-row strong { color: #111812; font-size: 14px; font-weight: 950; }
   .price-row del { color: #a0a69f; font-size: 10px; }
