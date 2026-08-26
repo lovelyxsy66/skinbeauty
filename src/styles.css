@@ -135,30 +135,33 @@ main { max-width: 1440px; margin: 0 auto; padding: 18px clamp(16px, 4vw, 48px) 4
   .filter-select span, .result-count { font-size: 11px; }
   .product-grid { grid-template-columns: 1fr; gap: 6px; }
   .product-card {
-    grid-template-columns: 62px 1fr 118px;
-    grid-template-rows: 76px;
+    grid-template-columns: 48px 1fr 90px;
+    grid-template-rows: 58px;
     gap: 0;
-    min-height: 76px;
+    min-height: 58px;
     border-radius: 7px;
   }
-  .product-image { width: 62px; height: 76px; }
-  .product-image img { padding: 5px; }
-  .product-body { gap: 2px; padding: 7px 6px 6px 0; }
-  .product-meta { font-size: 10px; }
-  .product-card h2 { min-height: 31px; font-size: 12px; line-height: 1.28; }
-  .product-card p { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .product-image { width: 48px; height: 58px; }
+  .product-image img { padding: 3px; }
+  .product-body { gap: 1px; padding: 5px 4px 4px 0; }
+  .product-meta { font-size: 9px; line-height: 1.1; }
+  .product-meta span { max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .product-card h2 { min-height: 26px; font-size: 11px; line-height: 1.18; }
+  .product-card p { display: none; }
   .tag-row { display: none; }
   .product-actions {
     grid-column: auto;
-    grid-template-columns: 1fr 32px;
+    grid-template-columns: 28px 42px;
     align-content: center;
-    gap: 5px;
-    padding: 6px;
+    justify-content: end;
+    gap: 4px;
+    padding: 4px;
   }
-  .product-actions strong { grid-column: 1 / -1; font-size: 15px; text-align: right; }
-  .icon-button { width: 32px; height: 32px; min-height: 32px; }
-  .buy-button, .quantity { height: 32px; min-height: 32px; }
-  .quantity button { width: 24px; height: 30px; }
+  .product-actions strong { grid-column: 1 / -1; font-size: 13px; line-height: 1; text-align: right; }
+  .icon-button { width: 28px; height: 28px; min-height: 28px; }
+  .buy-button, .quantity { width: 42px; height: 28px; min-height: 28px; padding: 0; font-size: 13px; }
+  .quantity button { width: 16px; height: 26px; padding: 0; }
+  .quantity span { min-width: 10px; font-size: 12px; }
   .panel { width: 100vw; padding: 12px; }
   .mini-line { grid-template-columns: 48px 1fr auto 32px; }
   .mini-line .product-image { width: 48px; height: 48px; }
