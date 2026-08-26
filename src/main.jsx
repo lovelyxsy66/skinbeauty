@@ -156,8 +156,7 @@ const submitAuth = async (event) => {
   });
 
   notify('登录成功');
-};
-  const submitOrder = () => {
+};  const submitOrder = () => {
     if (!requireLogin()) return;
     if (!cartItems.length) return notify('购物车为空');
     const shippingFee = cartCount >= 5 ? 0 : 3000;
