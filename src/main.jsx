@@ -1340,9 +1340,7 @@ const filteredOrders = orders.filter((order) => {
                             status: nextStatus
                           }, `订单状态变更：${order.status} → ${nextStatus}`);
                           if (nextStatus === STATUS_RECEIPT) {
-                            setTimeout(() => {
-                              document.getElementById(`shipping-upload-${order.id}`)?.click();
-                            }, 80);
+                            document.getElementById(`shipping-upload-${order.id}`)?.click();
                           }
                         }}
                       >
