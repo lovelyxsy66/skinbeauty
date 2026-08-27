@@ -35,7 +35,13 @@ const userKey = (name) => `olive-deal-shop:${name}`;
 const statuses = ['接单前', '已发货', '快递单照片登录', '已送达', '交易完成'];
 
 const money = (value) => `₩${Number(value || 0).toLocaleString('ko-KR')}`;
-const formatDateTime = (value) => value ? new Date(value).toLocaleString('ko-KR', { hour12: false }) : '-';
+const padTime = (value) => String(value).padStart(2, '0');
+const formatDateTime = (value) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return `${date.getFullYear()}-${padTime(date.getMonth() + 1)}-${padTime(date.getDate())} ${padTime(date.getHours())}:${padTime(date.getMinutes())}:${padTime(date.getSeconds())}`;
+};
 const loadJson = (key, fallback) => {
   try {
     return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
@@ -128,6 +134,7 @@ function App() {
   const [auth, setAuth] = useState({ username: '', countryCode: '+82', phoneNumber: '', code: '' });
   const [attribution, setAttribution] = useState(null);
   const [sending, setSending] = useState(false);
+  const [shippingConfirmOpen, setShippingConfirmOpen] = useState(false);
 
   useEffect(() => {
     setAttribution(recordPageView());
@@ -233,13 +240,14 @@ const submitAuth = async (event) => {
   notify('登录成功');
 };
 
-const submitOrder = async () => {
+const submitOrder = async ({ skipShippingConfirm = false } = {}) => {
   if (!requireLogin()) return;
   if (!cartItems.length) return notify('购物车为空');
-  if (cartCount < 5) {
-    const confirmed = window.confirm(`当前购物车只有 ${cartCount} 件，不满 5 件会产生 ₩3,000 运费。是否继续提交订单？`);
-    if (!confirmed) return;
+  if (cartCount < 5 && !skipShippingConfirm) {
+    setShippingConfirmOpen(true);
+    return;
   }
+  setShippingConfirmOpen(false);
 
   const shippingFee = cartCount >= 5 ? 0 : 3000;
 
@@ -381,7 +389,29 @@ const submitOrder = async () => {
     )}
   </Panel>
 )}      {toast && <div className="toast">{toast}</div>}
+      {shippingConfirmOpen && (
+        <CheckoutConfirm
+          remaining={5 - cartCount}
+          onContinue={() => submitOrder({ skipShippingConfirm: true })}
+          onBrowse={() => setShippingConfirmOpen(false)}
+        />
+      )}
     </>
+  );
+}
+
+function CheckoutConfirm({ remaining, onContinue, onBrowse }) {
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <section className="checkout-confirm" role="dialog" aria-modal="true" aria-label="包邮提醒">
+        <h3>包邮提醒</h3>
+        <p>只需{remaining}件商品就可以包邮了，真的要放弃包邮机会吗</p>
+        <div className="checkout-confirm-actions">
+          <button type="button" className="danger-button" onClick={onContinue}>继续结账</button>
+          <button type="button" className="checkout-button" onClick={onBrowse}>再逛逛</button>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -584,6 +614,56 @@ function Profile({ username, saved, setSaved, notify, logout }) {
     }
   };
 
+  const updatePayerName = async (order, nextName) => {
+    const payerName = nextName.trim();
+    const previous = order.payerName || '';
+    if (payerName === previous) return;
+
+    const statusEvents = [
+      ...(Array.isArray(order.statusEvents) ? order.statusEvents : []),
+      {
+        id: crypto.randomUUID(),
+        type: 'payer_name',
+        message: `实际转账人姓名：${previous || '-'} → ${payerName || '-'}`,
+        actor: username,
+        at: new Date().toISOString(),
+      },
+    ];
+
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({ id: order.id, payerName, statusEvents })
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '实际转账人姓名保存失败');
+      }
+
+      setOrders((current) => current.map((item) => (
+        item.id === order.id
+          ? { ...item, payerName, statusEvents, updatedAt: new Date().toISOString() }
+          : item
+      )));
+      saveJson(ordersKey, loadJson(ordersKey, []).map((item) => (
+        item.id === order.id ? { ...item, payerName, statusEvents } : item
+      )));
+
+      notify('实际转账人姓名已保存');
+
+      const hasAddress = (saved.addresses || []).some((item) => item.name && item.phone && item.zip && item.road);
+      if (payerName && !hasAddress) {
+        window.alert('请先填写收货地址，方便我们核对订单和安排配送。');
+      }
+    } catch (error) {
+      notify(error.message || '实际转账人姓名保存失败');
+    }
+  };
+
   return (
     <div className="profile-page">
       <div className="profile-card"><User size={19} /><div><strong>{username}</strong><span>{saved.phone || '已登录用户'}</span></div><button onClick={logout}>退出</button></div>
@@ -614,12 +694,53 @@ function Profile({ username, saved, setSaved, notify, logout }) {
                 </button>
               </div>
             </div>
-            <div className="submitted-order-items">{order.items.map((item) => <span key={item.id}>{item.name} x {item.qty}</span>)}</div>
+            <div className="submitted-order-items">
+              {(Array.isArray(order.items) ? order.items : []).map((item) => (
+                <span key={item.id}>
+                  {item.name} x {item.qty}
+                  <strong>{money(Number(item.price || 0) * Number(item.qty || 0))}</strong>
+                  <small>{money(item.price)} / 件</small>
+                </span>
+              ))}
+            </div>
+            <div className="submitted-order-breakdown">
+              <Summary label="商品金额" value={money(order.subtotal)} />
+              <Summary label="邮费" value={Number(order.shippingFee || 0) ? money(order.shippingFee) : '包邮'} />
+            </div>
+            <PayerNameField order={order} onSave={updatePayerName} />
             <div className="submitted-order-foot"><strong>{money(order.total)}</strong><span>{formatDateTime(order.createdAt)}</span></div>
           </article>
         )) : <span className="submitted-empty">暂无已提交订单</span>}
       </section>
     </div>
+  );
+}
+
+function PayerNameField({ order, onSave }) {
+  const [draft, setDraft] = useState(order.payerName || '');
+
+  useEffect(() => {
+    setDraft(order.payerName || '');
+  }, [order.id, order.payerName]);
+
+  return (
+    <label className="payer-name-field">
+      <span>实际转账人姓名</span>
+      <div>
+        <input
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              onSave(order, draft);
+            }
+          }}
+          placeholder="填写实际转账人姓名"
+        />
+        <button type="button" onClick={() => onSave(order, draft)}>保存</button>
+      </div>
+    </label>
   );
 }
 

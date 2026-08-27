@@ -53,7 +53,7 @@ export default async function handler(req, res) {
       return json(res, 200, { orders: rows });
     }
 if (req.method === 'PATCH') {
-  const { id, status, transferConfirmed, shippingReceiptUrl, statusEvents } = req.body || {};
+  const { id, status, transferConfirmed, shippingReceiptUrl, statusEvents, payerName } = req.body || {};
 
   if (!id) {
     return json(res, 400, { error: '订单号不能为空' });
@@ -64,6 +64,7 @@ if (req.method === 'PATCH') {
     SET
       status = COALESCE(${status ?? null}, status),
       transfer_confirmed = COALESCE(${transferConfirmed ?? null}, transfer_confirmed),
+      payer_name = COALESCE(${payerName ?? null}, payer_name),
       shipping_receipt_url = COALESCE(${shippingReceiptUrl ?? null}, shipping_receipt_url),
       status_events = COALESCE(${statusEvents ? JSON.stringify(statusEvents) : null}::jsonb, status_events),
       updated_at = NOW()
