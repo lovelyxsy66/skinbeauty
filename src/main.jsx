@@ -32,6 +32,7 @@ const userKey = (name) => `olive-deal-shop:${name}`;
 const statuses = ['接单前', '已发货', '快递单照片登录', '已送达', '交易完成'];
 
 const money = (value) => `₩${Number(value || 0).toLocaleString('ko-KR')}`;
+const formatDateTime = (value) => value ? new Date(value).toLocaleString('ko-KR', { hour12: false }) : '-';
 const loadJson = (key, fallback) => {
   try {
     return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
@@ -42,6 +43,14 @@ const loadJson = (key, fallback) => {
 const saveJson = (key, value) => localStorage.setItem(key, JSON.stringify(value));
 const blankUser = () => ({ cart: {}, favorites: [], phone: '', addresses: [], deletedAt: null });
 const normalize = (s) => String(s || '').toLowerCase();
+const newOrderEvent = (type, message, extra = {}) => ({
+  id: crypto.randomUUID(),
+  type,
+  message,
+  actor: 'admin',
+  at: new Date().toISOString(),
+  ...extra,
+});
 
 function getSessionId() {
   const existing = sessionStorage.getItem(sessionKey);
@@ -247,6 +256,15 @@ const submitAuth = async (event) => {
     attribution: saved.attribution || attribution || getAttribution(),
     createdAt: new Date().toISOString(),
   };
+  order.statusEvents = [
+    {
+      id: crypto.randomUUID(),
+      type: 'created',
+      message: '客户提交订单',
+      actor: activeUser,
+      at: order.createdAt,
+    },
+  ];
 
   try {
     const response = await fetch('/api/orders', {
@@ -340,6 +358,7 @@ const submitAuth = async (event) => {
           localStorage.removeItem(activeKey);
           setActiveUser('');
           setSaved(blankUser());
+          setAuth({ username: '', countryCode: '+82', phoneNumber: '', code: '' });
         }}
       />
     ) : (
@@ -577,7 +596,44 @@ const [endDate, setEndDate] = useState('');  const pageviews = analytics.pagevie
     .filter((source) => counts[source])
     .map((source) => `${source} ${counts[source]}`)
     .join(' · ') || '暂无';
-const update = async (id, patch) => {
+const getCustomerName = (order) => order.customerName || order.address?.name || order.username || '-';
+const getPhone = (order) => order.customerPhone || order.addressPhone || order.address?.phone || '-';
+const getFullAddress = (order) =>
+  [
+    order.postalCode || order.address?.zip,
+    order.roadAddress || order.address?.road,
+    order.detailAddress || order.address?.detail
+  ]
+    .filter(Boolean)
+    .join(' ') || '-';
+const getOrderEvents = (order) => {
+  const events = Array.isArray(order.statusEvents) ? order.statusEvents : [];
+  const derived = [
+    order.createdAt && {
+      id: `${order.id}-created`,
+      type: 'created',
+      message: '客户提交订单',
+      actor: order.username || 'customer',
+      at: order.createdAt,
+    },
+    !events.length && order.updatedAt && order.updatedAt !== order.createdAt && {
+      id: `${order.id}-updated`,
+      type: 'updated',
+      message: `当前状态：${order.status}`,
+      actor: 'admin',
+      at: order.updatedAt,
+    },
+  ].filter(Boolean);
+
+  return [...events, ...derived]
+    .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+};
+const update = async (id, patch, eventMessage) => {
+  const current = orders.find((order) => order.id === id);
+  const statusEvents = eventMessage
+    ? [...(current?.statusEvents || []), newOrderEvent(patch.status ? 'status' : 'update', eventMessage)]
+    : current?.statusEvents;
+
   try {
     const response = await fetch('/api/orders', {
       method: 'PATCH',
@@ -586,7 +642,8 @@ const update = async (id, patch) => {
       },
       body: JSON.stringify({
         id,
-        ...patch
+        ...patch,
+        ...(statusEvents ? { statusEvents } : {})
       })
     });
 
@@ -599,7 +656,7 @@ const update = async (id, patch) => {
     setOrders((old) =>
       old.map((order) =>
         order.id === id
-          ? { ...order, ...patch }
+          ? { ...order, ...patch, ...(statusEvents ? { statusEvents } : {}), updatedAt: new Date().toISOString() }
           : order
       )
     );
@@ -634,7 +691,7 @@ const uploadShippingReceipt = async (orderId, file) => {
 
     await update(orderId, {
       shippingReceiptUrl: uploadData.pathname
-    });
+    }, `快递单照片已上传：${file.name}`);
 
     alert('快递单照片上传成功');
   } catch (error) {
@@ -644,15 +701,8 @@ const uploadShippingReceipt = async (orderId, file) => {
 const filteredOrders = orders.filter((order) => {
   const search = orderSearch.trim().toLowerCase();
 
-  const customerName =
-    order.customerName ||
-    order.username ||
-    '';
-
-  const phone =
-    order.customerPhone ||
-    order.addressPhone ||
-    '';
+  const customerName = getCustomerName(order);
+  const phone = getPhone(order);
   const matchesSearch =
     !search ||
     String(order.id || '').toLowerCase().includes(search) ||
@@ -828,6 +878,8 @@ const filteredOrders = orders.filter((order) => {
       </section>
 
       <section className="admin-order-list">
+        {ordersLoading && <div className="empty-state">订单读取中...</div>}
+        {ordersError && <div className="empty-state">订单读取失败：{ordersError}</div>}
 
         <div className="admin-order-table-head">
           <span>상태</span>
@@ -840,29 +892,14 @@ const filteredOrders = orders.filter((order) => {
           <span>상세</span>
         </div>
 
-        {filteredOrders.length ? (
-          filteredOrders.map((order) => {
-         const customerName =
-  order.customerName ||
-  order.username ||
-  '-';
-
-const phone =
-  order.customerPhone ||
-  order.addressPhone ||
-  '-';
-
-const fullAddress =
-  [
-    order.postalCode,
-    order.roadAddress,
-    order.detailAddress
-  ]
-    .filter(Boolean)
-    .join(' ') || '-';
-            const purchaseDate = order.createdAt
-              ? new Date(order.createdAt).toLocaleString('ko-KR')
-              : '-';
+        {!ordersLoading && !ordersError && (
+          filteredOrders.length ? (
+            filteredOrders.map((order) => {
+            const customerName = getCustomerName(order);
+            const phone = getPhone(order);
+            const fullAddress = getFullAddress(order);
+            const purchaseDate = formatDateTime(order.createdAt);
+            const orderEvents = getOrderEvents(order);
 
             return (
               <article
@@ -870,7 +907,19 @@ const fullAddress =
                 key={order.id}
               >
                 <div className="admin-order-table-row">
-                  <span>{order.status}</span>
+                  <span className="status-cell">
+                    <strong>{order.status}</strong>
+                    {order.status === '已发货' && (
+                      <label className="inline-upload">
+                        上传快递单
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => uploadShippingReceipt(order.id, e.target.files?.[0])}
+                        />
+                      </label>
+                    )}
+                  </span>
 
                   <strong>{order.id}</strong>
 
@@ -904,6 +953,9 @@ const fullAddress =
                       <p>아이디: {order.username || '-'}</p>
                       <p>고객명: {customerName}</p>
                       <p>휴대폰번호: {phone}</p>
+                      <p>收货姓名: {order.customerName || order.address?.name || '-'}</p>
+                      <p>收货电话: {order.addressPhone || order.address?.phone || '-'}</p>
+                      <p>邮编: {order.postalCode || order.address?.zip || '-'}</p>
                       <p>주소: {fullAddress}</p>
                     </div>
 
@@ -941,7 +993,7 @@ const fullAddress =
                           onChange={(e) =>
                             update(order.id, {
                               transferConfirmed: e.target.checked
-                            })
+                            }, e.target.checked ? '已确认客户入金' : '取消入金确认')
                           }
                         />
                         입금 확인
@@ -952,7 +1004,7 @@ const fullAddress =
                         onChange={(e) =>
                           update(order.id, {
                             status: e.target.value
-                          })
+                          }, `订单状态变更：${order.status} → ${e.target.value}`)
                         }
                       >
                         {statuses.map((status) => (
@@ -1011,15 +1063,31 @@ const fullAddress =
                       </p>
                     </div>
 
+                    <div className="order-timeline">
+                      <h3>处理记录</h3>
+                      {orderEvents.length ? (
+                        orderEvents.map((event) => (
+                          <p key={event.id}>
+                            <strong>{formatDateTime(event.at)}</strong>
+                            <span>{event.message}</span>
+                            <small>{event.actor || 'admin'}</small>
+                          </p>
+                        ))
+                      ) : (
+                        <p>暂无处理记录</p>
+                      )}
+                    </div>
+
                   </div>
                 )}
               </article>
             );
-          })
-        ) : (
-          <div className="empty-state">
-            조건에 맞는 주문이 없습니다.
-          </div>
+            })
+          ) : (
+            <div className="empty-state">
+              조건에 맞는 주문이 없습니다.
+            </div>
+          )
         )}
 
       </section>

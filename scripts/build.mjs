@@ -1,8 +1,11 @@
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { build } from 'esbuild';
 
 await rm('dist', { recursive: true, force: true });
 await mkdir('dist/assets', { recursive: true });
+await cp('public', 'dist', { recursive: true, force: true }).catch((error) => {
+  if (error.code !== 'ENOENT') throw error;
+});
 
 const result = await build({
   entryPoints: ['src/main.jsx'],
@@ -12,8 +15,8 @@ const result = await build({
   format: 'esm',
   splitting: false,
   outdir: 'dist/assets',
-  entryNames: 'main',
-  assetNames: '[name]',
+  entryNames: 'main-[hash]',
+  assetNames: '[name]-[hash]',
   loader: {
     '.js': 'jsx',
     '.jsx': 'jsx',
@@ -36,6 +39,18 @@ await writeFile(
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>skinbeauty</title>
     ${style ? `<link rel="stylesheet" href="/${publicPath(style)}" />` : ''}
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations()
+          .then((registrations) => registrations.forEach((registration) => registration.unregister()))
+          .catch(() => {});
+      }
+      if ('caches' in window) {
+        caches.keys()
+          .then((keys) => keys.forEach((key) => caches.delete(key)))
+          .catch(() => {});
+      }
+    </script>
     <script type="module" src="/${publicPath(script)}"></script>
   </head>
   <body>

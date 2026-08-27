@@ -183,7 +183,32 @@ main { max-width: 1440px; margin: 0 auto; padding: 18px clamp(16px, 4vw, 48px) 4
 .admin-order-list { overflow: hidden; border: 1px solid #dbe3ee; border-radius: 10px; background: #fff; }
 .admin-list-order + .admin-list-order { border-top: 1px solid #dbe3ee; }
 .admin-list-row { display: grid; grid-template-columns: 100px 180px 1fr 88px 120px 70px; gap: 12px; align-items: center; padding: 14px; }
-.admin-order-detail { display: grid; gap: 10px; padding: 14px; border-top: 1px solid #dbe3ee; background: #fbfdff; }
+.order-filters { display: grid; grid-template-columns: auto 180px minmax(220px, 1fr) auto; gap: 10px; align-items: end; padding: 14px; border: 1px solid #dbe3ee; border-radius: 10px; background: #fff; }
+.order-date-filter { display: flex; align-items: end; gap: 8px; }
+.order-filters label { display: grid; gap: 5px; color: #607086; font-size: 12px; font-weight: 900; }
+.order-filters input, .order-filters select, .order-filters button { min-height: 40px; border: 1px solid #dbe3ee; border-radius: 8px; background: #fff; padding: 0 10px; }
+.order-filters button, .admin-order-table-row button, .shipping-receipt-upload button { color: #fff; border-color: #173522; background: #173522; font-weight: 900; }
+.admin-order-table-head, .admin-order-table-row { display: grid; grid-template-columns: 140px minmax(150px, 1.1fr) minmax(90px, .8fr) minmax(110px, .85fr) minmax(150px, 1fr) minmax(180px, 1.1fr) minmax(96px, .75fr) 72px; gap: 10px; align-items: center; padding: 13px 14px; }
+.admin-order-table-head { color: #607086; background: #f8fafc; font-size: 12px; font-weight: 950; }
+.admin-order-table-row { min-height: 76px; font-size: 13px; }
+.admin-order-table-row > span, .admin-order-table-row > strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.status-cell { display: grid; gap: 6px; align-content: center; }
+.status-cell strong { color: #173522; font-size: 13px; }
+.inline-upload { position: relative; display: inline-flex; width: fit-content; min-height: 26px; align-items: center; border: 1px solid #c8d5c8; border-radius: 7px; padding: 0 8px; color: #1f6f48; background: #f2f8f1; font-size: 11px; font-weight: 900; overflow: hidden; }
+.inline-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.order-address { white-space: nowrap; }
+.admin-order-detail { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 16px; border-top: 1px solid #dbe3ee; background: #fbfdff; }
+.admin-order-detail > div { display: grid; align-content: start; gap: 7px; min-width: 0; border: 1px solid #e5ebf3; border-radius: 8px; background: #fff; padding: 12px; }
+.admin-order-detail h3 { color: #111827; font-size: 15px; }
+.admin-order-detail p, .admin-order-detail label { color: #4b5563; font-size: 13px; font-weight: 750; line-height: 1.45; overflow-wrap: anywhere; }
+.admin-order-detail select { min-height: 38px; border: 1px solid #dbe3ee; border-radius: 8px; padding: 0 10px; }
+.shipping-receipt-upload { display: grid; gap: 8px; }
+.shipping-receipt-upload input { margin-top: 6px; max-width: 100%; }
+.order-timeline { grid-column: 1 / -1; }
+.order-timeline p { display: grid; grid-template-columns: 180px minmax(0, 1fr) 80px; gap: 10px; align-items: center; border-bottom: 1px solid #eef2f7; padding-bottom: 6px; }
+.order-timeline p:last-child { border-bottom: 0; padding-bottom: 0; }
+.order-timeline strong { color: #111827; font-size: 12px; }
+.order-timeline small { color: #7a8494; text-align: right; }
 @media (max-width: 760px) {
   body { background: #fff; }
   .topbar { position: relative; grid-template-columns: 1fr auto auto; gap: 8px; padding: 12px 16px 10px; border-bottom: 1px solid #edf0ea; box-shadow: none; }
@@ -325,4 +350,18 @@ main { max-width: 1440px; margin: 0 auto; padding: 18px clamp(16px, 4vw, 48px) 4
 .admin-layout .admin-shell {
   flex: 1;
   min-width: 0;
+}
+
+@media (max-width: 980px) {
+  .admin-layout { display: grid; min-height: auto; }
+  .admin-sidebar { position: sticky; top: 0; z-index: 5; width: 100%; flex-direction: row; gap: 6px; overflow-x: auto; border-right: 0; border-bottom: 1px solid #e5e7eb; padding: 10px; }
+  .admin-sidebar button { min-width: max-content; text-align: center; }
+  .order-filters { grid-template-columns: 1fr; }
+  .order-date-filter { align-items: end; }
+  .admin-order-table-head { display: none; }
+  .admin-order-table-row { grid-template-columns: 1fr; gap: 7px; align-items: start; }
+  .admin-order-table-row > span, .admin-order-table-row > strong { white-space: normal; }
+  .admin-order-detail { grid-template-columns: 1fr; }
+  .order-timeline p { grid-template-columns: 1fr; gap: 3px; }
+  .order-timeline small { text-align: left; }
 }
