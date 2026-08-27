@@ -5,9 +5,12 @@ import {
   Heart,
   Home,
   KeyRound,
+  LayoutDashboard,
+  LineChart,
   LogIn,
   Minus,
   PackageCheck,
+  ClipboardList,
   Search,
   ShoppingBag,
   Smartphone,
@@ -228,9 +231,15 @@ const submitAuth = async (event) => {
   });
 
   notify('登录成功');
-};  const submitOrder = async () => {
+};
+
+const submitOrder = async () => {
   if (!requireLogin()) return;
   if (!cartItems.length) return notify('购物车为空');
+  if (cartCount < 5) {
+    const confirmed = window.confirm(`当前购物车只有 ${cartCount} 件，不满 5 件会产生 ₩3,000 运费。是否继续提交订单？`);
+    if (!confirmed) return;
+  }
 
   const shippingFee = cartCount >= 5 ? 0 : 3000;
 
@@ -501,19 +510,53 @@ function FavoriteList({ ids }) {
 
 function Profile({ username, saved, setSaved, notify, logout }) {
   const [address, setAddress] = useState({ name: '', phone: '', zip: '', road: '', detail: '' });
-  const [orders, setOrders] = useState(() => loadJson(ordersKey, []).filter((order) => order.username === username));
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+
+    const loadOrders = async () => {
+      try {
+        setOrdersLoading(true);
+        const response = await fetch('/api/orders');
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || '订单读取失败');
+        }
+
+        const userOrders = (data.orders || []).filter((order) => (
+          order.username === username ||
+          order.customerPhone === saved.phone ||
+          order.addressPhone === saved.phone
+        ));
+
+        if (alive) setOrders(userOrders);
+      } catch (error) {
+        const localOrders = loadJson(ordersKey, []).filter((order) => order.username === username);
+        if (alive) {
+          setOrders(localOrders);
+          notify(error.message || '订单读取失败');
+        }
+      } finally {
+        if (alive) setOrdersLoading(false);
+      }
+    };
+
+    loadOrders();
+
+    return () => {
+      alive = false;
+    };
+  }, [username, saved.phone]);
+
   const addAddress = (event) => {
     event.preventDefault();
     if (!address.name || !address.phone || !address.zip || !address.road) return notify('请填写姓名、手机号、邮编和道路名地址');
     setSaved((old) => ({ ...old, addresses: [{ ...address, id: crypto.randomUUID() }, ...old.addresses] }));
     setAddress({ name: '', phone: '', zip: '', road: '', detail: '' });
     notify('收货地址已保存');
-  };
-  const deleteOrder = (id) => {
-    const all = loadJson(ordersKey, []).filter((order) => order.id !== id);
-    saveJson(ordersKey, all);
-    setOrders((old) => old.filter((order) => order.id !== id));
-    notify('订单已删除');
   };
   return (
     <div className="profile-page">
@@ -531,11 +574,13 @@ function Profile({ username, saved, setSaved, notify, logout }) {
       </form>
       <section className="submitted-orders">
         <h3>已提交订单</h3>
-        {orders.length ? orders.map((order) => (
+        {ordersLoading ? (
+          <span className="submitted-empty">订单读取中...</span>
+        ) : orders.length ? orders.map((order) => (
           <article className="submitted-order" key={order.id}>
             <div className="submitted-order-head"><strong>{order.id}</strong><span>{order.status}</span></div>
             <div className="submitted-order-items">{order.items.map((item) => <span key={item.id}>{item.name} x {item.qty}</span>)}</div>
-            <div className="submitted-order-foot"><strong>{money(order.total)}</strong><button className="danger-button" onClick={() => deleteOrder(order.id)}>删除订单</button></div>
+            <div className="submitted-order-foot"><strong>{money(order.total)}</strong><span>{formatDateTime(order.createdAt)}</span></div>
           </article>
         )) : <span className="submitted-empty">暂无已提交订单</span>}
       </section>
@@ -665,6 +710,31 @@ const update = async (id, patch, eventMessage) => {
   }
 };
 
+const deleteOrder = async (id) => {
+  if (!window.confirm(`确定删除订单 ${id} 吗？删除后不可恢复。`)) return;
+
+  try {
+    const response = await fetch('/api/orders', {
+      method: 'DELETE',
+      headers: {
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({ id })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || '订单删除失败');
+    }
+
+    setOrders((old) => old.filter((order) => order.id !== id));
+    if (open === id) setOpen('');
+  } catch (error) {
+    alert(error.message);
+  }
+};
+
 const uploadShippingReceipt = async (orderId, file) => {
   if (!file) return;
 
@@ -727,29 +797,34 @@ const filteredOrders = orders.filter((order) => {
 });
   return (
     <div className="admin-page">
-      <header className="admin-topbar"><a className="admin-brand" href="/">skinbeauty</a><nav><a href="/">商城首页</a><a href="/admin">后台管理</a></nav></header>
       <div className="admin-layout">
   <aside className="admin-sidebar">
+    <div className="admin-account">
+      <strong>skinbeauty 어드민</strong>
+      <span>admin@skinbeauty</span>
+      <small>관리자</small>
+    </div>
     <button
       className={adminTab === 'dashboard' ? 'active' : ''}
       onClick={() => setAdminTab('dashboard')}
     >
-      대시보드
+      <LayoutDashboard size={16} /> <span>대시보드</span>
     </button>
 
     <button
       className={adminTab === 'analytics' ? 'active' : ''}
       onClick={() => setAdminTab('analytics')}
     >
-      전환분석
+      <LineChart size={16} /> <span>전환분석</span>
     </button>
 
     <button
       className={adminTab === 'orders' ? 'active' : ''}
       onClick={() => setAdminTab('orders')}
     >
-      주문신청
+      <ClipboardList size={16} /> <span>주문신청</span>
     </button>
+    <a className="admin-logout" href="/">商城首页</a>
   </aside>
 
  <main className="admin-shell">
@@ -890,6 +965,7 @@ const filteredOrders = orders.filter((order) => {
           <span>주소</span>
           <span>총금액</span>
           <span>상세</span>
+          <span>삭제</span>
         </div>
 
         {!ordersLoading && !ordersError && (
@@ -942,6 +1018,14 @@ const filteredOrders = orders.filter((order) => {
                     }
                   >
                     {open === order.id ? '닫기' : '상세'}
+                  </button>
+
+                  <button
+                    className="admin-delete-btn"
+                    type="button"
+                    onClick={() => deleteOrder(order.id)}
+                  >
+                    삭제
                   </button>
                 </div>
 

@@ -80,6 +80,29 @@ if (req.method === 'PATCH') {
     id: rows[0].id
   });
 }
+    if (req.method === 'DELETE') {
+      const { id } = req.body || {};
+
+      if (!id) {
+        return json(res, 400, { error: '订单号不能为空' });
+      }
+
+      const rows = await sql`
+        DELETE FROM orders
+        WHERE id = ${id}
+        RETURNING id
+      `;
+
+      if (!rows.length) {
+        return json(res, 404, { error: '订单不存在' });
+      }
+
+      return json(res, 200, {
+        ok: true,
+        id: rows[0].id
+      });
+    }
+
     if (req.method === 'POST') {
       const order = req.body || {};
       const address = order.address || {};
