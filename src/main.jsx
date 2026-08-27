@@ -1,12 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
+  BadgeCheck,
   Heart,
   Home,
+  KeyRound,
+  LogIn,
   Minus,
   PackageCheck,
   Search,
   ShoppingBag,
+  Smartphone,
   Trash2,
   User,
   X,
@@ -22,6 +26,8 @@ const bank = {
 const usersKey = 'olive-deal-shop:users';
 const activeKey = 'olive-active-user';
 const ordersKey = 'skinbeauty:orders';
+const analyticsKey = 'skinbeauty:analytics';
+const sessionKey = 'skinbeauty:session-id';
 const userKey = (name) => `olive-deal-shop:${name}`;
 const statuses = ['接单前', '已发货', '快递单照片登录', '已送达', '交易完成'];
 
@@ -36,6 +42,56 @@ const loadJson = (key, fallback) => {
 const saveJson = (key, value) => localStorage.setItem(key, JSON.stringify(value));
 const blankUser = () => ({ cart: {}, favorites: [], phone: '', addresses: [], deletedAt: null });
 const normalize = (s) => String(s || '').toLowerCase();
+
+function getSessionId() {
+  const existing = sessionStorage.getItem(sessionKey);
+  if (existing) return existing;
+  const next = crypto.randomUUID();
+  sessionStorage.setItem(sessionKey, next);
+  return next;
+}
+
+function detectSource() {
+  const params = new URLSearchParams(location.search);
+  const rawSource = normalize([params.get('utm_source'), params.get('source'), params.get('from'), params.get('channel')].filter(Boolean).join(' '));
+  const referrer = normalize(document.referrer);
+  const ua = normalize(navigator.userAgent);
+  const combined = `${rawSource} ${referrer} ${ua}`;
+
+  if (/xiaohongshu|xhs|redbook|小红书/.test(combined)) return '小红书';
+  if (/micromessenger|wechat|weixin|微信/.test(combined)) return '微信';
+  return '浏览器';
+}
+
+function getAttribution() {
+  const params = new URLSearchParams(location.search);
+  return {
+    source: detectSource(),
+    landingPath: `${location.pathname}${location.search}`,
+    referrer: document.referrer || '',
+    userAgent: navigator.userAgent,
+    utm: {
+      source: params.get('utm_source') || params.get('source') || '',
+      medium: params.get('utm_medium') || '',
+      campaign: params.get('utm_campaign') || '',
+      content: params.get('utm_content') || '',
+      term: params.get('utm_term') || '',
+    },
+  };
+}
+
+function recordPageView() {
+  const analytics = loadJson(analyticsKey, { pageviews: [] });
+  const view = {
+    id: crypto.randomUUID(),
+    sessionId: getSessionId(),
+    at: new Date().toISOString(),
+    title: document.title,
+    ...getAttribution(),
+  };
+  saveJson(analyticsKey, { ...analytics, pageviews: [view, ...(analytics.pageviews || [])].slice(0, 500) });
+  return view;
+}
 
 function enrichProduct(product, index) {
   const title = product.displayName || product.name;
@@ -58,7 +114,12 @@ function App() {
   const [panel, setPanel] = useState('');
   const [toast, setToast] = useState('');
   const [auth, setAuth] = useState({ username: '', countryCode: '+82', phoneNumber: '', code: '' });
+  const [attribution, setAttribution] = useState(null);
   const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    setAttribution(recordPageView());
+  }, []);
 
   useEffect(() => {
     if (toast) {
@@ -144,7 +205,8 @@ const submitAuth = async (event) => {
   const users = loadJson(usersKey, {});
   users[auth.username] = {
     phone: auth.phoneNumber,
-    lastLoginAt: new Date().toISOString()
+    lastLoginAt: new Date().toISOString(),
+    attribution: attribution || getAttribution()
   };
 
   saveJson(usersKey, users);
@@ -152,7 +214,8 @@ const submitAuth = async (event) => {
   setSaved({
     ...blankUser(),
     ...loadJson(userKey(auth.username), {}),
-    phone: auth.phoneNumber
+    phone: auth.phoneNumber,
+    attribution: attribution || getAttribution()
   });
 
   notify('登录成功');
@@ -172,6 +235,7 @@ const submitAuth = async (event) => {
       payerName: '',
       status: statuses[0],
       transferConfirmed: false,
+      attribution: saved.attribution || attribution || getAttribution(),
       createdAt: new Date().toISOString(),
     };
     saveJson(ordersKey, [order, ...loadJson(ordersKey, [])]);
@@ -247,16 +311,25 @@ const submitAuth = async (event) => {
 function AuthForm({ auth, setAuth, onSendCode, onSubmit, sending }) {
   return (
     <form className="auth-box" onSubmit={onSubmit}>
-      <input value={auth.username} onChange={(e) => setAuth((old) => ({ ...old, username: e.target.value }))} placeholder="用户名" />
-      <div className="phone-fields">
-        <input value={auth.countryCode} onChange={(e) => setAuth((old) => ({ ...old, countryCode: e.target.value }))} />
+      <label className="auth-field username-field">
+        <User size={15} />
+        <input value={auth.username} onChange={(e) => setAuth((old) => ({ ...old, username: e.target.value }))} placeholder="用户名" />
+      </label>
+      <label className="auth-field phone-field">
+        <Smartphone size={15} />
+        <input className="country-input" value={auth.countryCode} onChange={(e) => setAuth((old) => ({ ...old, countryCode: e.target.value }))} aria-label="国家区号" />
         <input value={auth.phoneNumber} onChange={(e) => setAuth((old) => ({ ...old, phoneNumber: e.target.value }))} placeholder="手机号" />
-      </div>
-      <div className="code-fields">
+      </label>
+      <label className="auth-field code-field">
+        <KeyRound size={15} />
         <input value={auth.code} onChange={(e) => setAuth((old) => ({ ...old, code: e.target.value }))} placeholder="验证码" />
         <button type="button" onClick={onSendCode} disabled={sending}>{sending ? '发送中' : '发送'}</button>
-      </div>
-      <button type="submit">登录</button>
+      </label>
+      <button className="login-button" type="submit">
+        <LogIn size={15} />
+        <span>登录</span>
+      </button>
+      <span className="auth-note"><BadgeCheck size={13} /> 测试码 123456</span>
     </form>
   );
 }
@@ -408,7 +481,23 @@ function Summary({ label, value, strong }) {
 
 function AdminPage() {
   const [orders, setOrders] = useState(() => loadJson(ordersKey, []));
+  const [analytics] = useState(() => loadJson(analyticsKey, { pageviews: [] }));
   const [open, setOpen] = useState('');
+  const pageviews = analytics.pageviews || [];
+  const pageviewSources = pageviews.reduce((acc, view) => {
+    const source = view.source || '浏览器';
+    acc[source] = (acc[source] || 0) + 1;
+    return acc;
+  }, {});
+  const orderSources = orders.reduce((acc, order) => {
+    const source = order.attribution?.source || '未记录';
+    acc[source] = (acc[source] || 0) + 1;
+    return acc;
+  }, {});
+  const sourceSummary = (counts) => ['小红书', '微信', '浏览器', '未记录']
+    .filter((source) => counts[source])
+    .map((source) => `${source} ${counts[source]}`)
+    .join(' · ') || '暂无';
   const update = (id, patch) => {
     setOrders((old) => {
       const next = old.map((order) => (order.id === id ? { ...order, ...patch } : order));
@@ -421,11 +510,16 @@ function AdminPage() {
       <header className="admin-topbar"><a className="admin-brand" href="/">skinbeauty</a><nav><a href="/">商城首页</a><a href="/admin">后台管理</a></nav></header>
       <main className="admin-shell">
         <header className="admin-header"><h1>客户订单</h1><p>共 {orders.length} 件订单</p></header>
+        <section className="analytics-cards">
+          <article><span>Pageview</span><strong>{pageviews.length}</strong><small>{sourceSummary(pageviewSources)}</small></article>
+          <article><span>客户来源</span><strong>{sourceSummary(orderSources)}</strong><small>下单时自动记录</small></article>
+          <article><span>最近访问</span><strong>{pageviews[0]?.source || '暂无'}</strong><small>{pageviews[0]?.landingPath || '等待新访客'}</small></article>
+        </section>
         <section className="admin-order-list">
           {orders.length ? orders.map((order) => (
             <article className="admin-list-order" key={order.id}>
-              <div className="admin-list-row"><span>{order.status}</span><strong>{order.id}</strong><span>{order.username}</span><span>{money(order.total)}</span><button onClick={() => setOpen(open === order.id ? '' : order.id)}>详情</button></div>
-              {open === order.id && <div className="admin-order-detail"><div>{order.items.map((item) => <p key={item.id}>{item.name} x {item.qty}</p>)}</div><label><input type="checkbox" checked={order.transferConfirmed} onChange={(e) => update(order.id, { transferConfirmed: e.target.checked })} /> 确认已转账</label><select value={order.status} onChange={(e) => update(order.id, { status: e.target.value })}>{statuses.map((status) => <option key={status}>{status}</option>)}</select></div>}
+              <div className="admin-list-row"><span>{order.status}</span><strong>{order.id}</strong><span>{order.username}</span><span>{order.attribution?.source || '未记录'}</span><span>{money(order.total)}</span><button onClick={() => setOpen(open === order.id ? '' : order.id)}>详情</button></div>
+              {open === order.id && <div className="admin-order-detail"><div>{order.items.map((item) => <p key={item.id}>{item.name} x {item.qty}</p>)}<p>来源：{order.attribution?.source || '未记录'}</p><p>入口：{order.attribution?.landingPath || '-'}</p><p>Referrer：{order.attribution?.referrer || '-'}</p></div><label><input type="checkbox" checked={order.transferConfirmed} onChange={(e) => update(order.id, { transferConfirmed: e.target.checked })} /> 确认已转账</label><select value={order.status} onChange={(e) => update(order.id, { status: e.target.value })}>{statuses.map((status) => <option key={status}>{status}</option>)}</select></div>}
             </article>
           )) : <div className="empty-state">暂无订单</div>}
         </section>
