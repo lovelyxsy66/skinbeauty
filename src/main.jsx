@@ -13,6 +13,7 @@ import {
   ClipboardList,
   Search,
   ShoppingBag,
+  ShoppingCart,
   Smartphone,
   Trash2,
   User,
@@ -331,8 +332,8 @@ const submitOrder = async ({ skipShippingConfirm = false } = {}) => {
             <Heart size={17} />
             <span>{saved.favorites.length}</span>
           </button>
-          <button className="action-button primary" onClick={() => setPanel('cart')}>
-            <ShoppingBag size={17} />
+          <button className="action-button primary cart-button" onClick={() => setPanel('cart')} aria-label="购物车">
+            <ShoppingCart size={17} />
             <span>{cartCount}</span>
           </button>
         </div>

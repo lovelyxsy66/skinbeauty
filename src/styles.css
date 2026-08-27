@@ -235,11 +235,22 @@ main { max-width: 1440px; margin: 0 auto; padding: 18px clamp(16px, 4vw, 48px) 4
 .order-timeline small { color: #7a8494; text-align: right; }
 @media (max-width: 760px) {
   body { background: #fff; }
-  .topbar { position: relative; grid-template-columns: 1fr auto auto; gap: 8px; padding: 12px 16px 10px; border-bottom: 1px solid #edf0ea; box-shadow: none; }
-  .brand-logo span { font-size: 28px; letter-spacing: 0; }
-  .brand-logo small { display: block; font-size: 11px; line-height: 1.1; }
+  .topbar {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    gap: 7px;
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid #edf0ea;
+    box-shadow: none;
+  }
+  .brand-logo { min-width: 0; color: #172018; }
+  .brand-logo span { color: #111812; font-size: 25px; letter-spacing: 0; }
+  .brand-logo small { display: block; color: #647067; font-size: 9.5px; line-height: 1.1; }
   .header-actions { display: contents; }
-  .header-search { grid-column: 1 / -1; order: 2; min-height: 44px; padding: 0 14px; border-color: #d7dfd4; background: #fbfcfa; }
+  .header-search { grid-column: 1 / -1; order: 2; min-height: 42px; padding: 0 13px; border-color: #d7dfd4; background: #fbfcfa; }
+  .header-search svg { color: #243029; }
+  .header-search input { color: #252d28; font-size: 14px; font-weight: 650; }
+  .header-search input::placeholder { color: #a7ada8; font-weight: 550; }
   .auth-box {
     grid-column: 1 / -1;
     grid-template-columns: 1fr 1fr;
@@ -258,14 +269,33 @@ main { max-width: 1440px; margin: 0 auto; padding: 18px clamp(16px, 4vw, 48px) 4
   .code-field { grid-column: 1 / 2; grid-template-columns: 15px minmax(0, 1fr) 48px; }
   .login-button { grid-column: 2 / 3; min-height: 36px; }
   .auth-note { display: inline-flex; grid-column: 1 / -1; justify-self: center; }
-  .user-pill { order: 1; }
-  .action-button { order: 1; }
-  .user-pill span, .action-button span { max-width: 58px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .user-pill, .action-button {
+    order: 1;
+    min-width: 42px;
+    min-height: 40px;
+    border-color: #dfe5dc;
+    border-radius: 8px;
+    background: #fff;
+    color: #253029;
+    padding: 0 10px;
+    box-shadow: none;
+  }
+  .user-pill svg, .action-button svg { color: #253029; }
+  .user-pill span, .action-button span { max-width: 56px; overflow: hidden; color: #253029; font-size: 13px; font-weight: 820; text-overflow: ellipsis; white-space: nowrap; }
+  .action-button.primary, .cart-button {
+    color: #253029;
+    border-color: #dfe5dc;
+    background: #fff;
+  }
+  .cart-button { gap: 4px; }
+  .cart-button svg { color: #18211b; stroke-width: 2.4; }
+  .cart-button span { color: #18211b; font-weight: 900; }
   main { padding: 0 6px 72px; background: #fff; }
   .trust-strip { display: none; }
   .filters { position: sticky; z-index: 8; top: 0; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin: 0 -6px; padding: 6px; border-bottom: 1px solid #edf0ea; background: rgba(255,255,255,.98); }
-  .filter-select { grid-template-columns: 30px 1fr; min-height: 30px; padding: 0 6px; border-radius: 6px; }
-  .filter-select span, .result-count { font-size: 10px; }
+  .filter-select { grid-template-columns: 27px minmax(0, 1fr); min-height: 30px; padding: 0 6px; border-color: #e0e6de; border-radius: 6px; background: #fff; }
+  .filter-select span, .result-count { color: #737d75; font-size: 10px; font-weight: 760; }
+  .filter-select select { min-width: 0; color: #26302a; font-size: 12.5px; font-weight: 760; letter-spacing: 0; }
   .result-count { justify-self: end; }
   .product-grid { grid-template-columns: 1fr; gap: 0; border-top: 1px solid #eef1ec; }
   .product-card {
