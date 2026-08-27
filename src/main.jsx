@@ -558,6 +558,32 @@ function Profile({ username, saved, setSaved, notify, logout }) {
     setAddress({ name: '', phone: '', zip: '', road: '', detail: '' });
     notify('收货地址已保存');
   };
+  const deleteSubmittedOrder = async (id) => {
+    const confirmed = window.confirm('确定要删除这个已提交订单吗？');
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'DELETE',
+        headers: {
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({ id })
+      });
+      const data = await response.json();
+
+      if (!response.ok && response.status !== 404) {
+        throw new Error(data.error || '订单删除失败');
+      }
+
+      saveJson(ordersKey, loadJson(ordersKey, []).filter((order) => order.id !== id));
+      setOrders((current) => current.filter((order) => order.id !== id));
+      notify('订单已删除');
+    } catch (error) {
+      notify(error.message || '订单删除失败');
+    }
+  };
+
   return (
     <div className="profile-page">
       <div className="profile-card"><User size={19} /><div><strong>{username}</strong><span>{saved.phone || '已登录用户'}</span></div><button onClick={logout}>退出</button></div>
@@ -578,7 +604,16 @@ function Profile({ username, saved, setSaved, notify, logout }) {
           <span className="submitted-empty">订单读取中...</span>
         ) : orders.length ? orders.map((order) => (
           <article className="submitted-order" key={order.id}>
-            <div className="submitted-order-head"><strong>{order.id}</strong><span>{order.status}</span></div>
+            <div className="submitted-order-head">
+              <strong>{order.id}</strong>
+              <div className="submitted-order-actions">
+                <span>{order.status}</span>
+                <button type="button" onClick={() => deleteSubmittedOrder(order.id)} aria-label="删除订单">
+                  <Trash2 size={14} />
+                  删除
+                </button>
+              </div>
+            </div>
             <div className="submitted-order-items">{order.items.map((item) => <span key={item.id}>{item.name} x {item.qty}</span>)}</div>
             <div className="submitted-order-foot"><strong>{money(order.total)}</strong><span>{formatDateTime(order.createdAt)}</span></div>
           </article>

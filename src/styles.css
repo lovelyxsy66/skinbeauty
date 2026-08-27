@@ -164,6 +164,10 @@ main { max-width: 1440px; margin: 0 auto; padding: 18px clamp(16px, 4vw, 48px) 4
 .submitted-orders { display: grid; gap: 9px; }
 .submitted-order { display: grid; gap: 8px; background: #fff; }
 .submitted-order-head, .submitted-order-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.submitted-order-head strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.submitted-order-actions { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 8px; }
+.submitted-order-actions span { border-radius: 999px; background: #edf7df; padding: 4px 8px; color: #236739; font-size: 12px; font-weight: 900; white-space: nowrap; }
+.submitted-order-actions button { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; border: 1px solid #f0b9c1; border-radius: 7px; background: #fff0f2; color: #b83342; padding: 0 8px; font-size: 12px; font-weight: 900; white-space: nowrap; }
 .submitted-order-items { display: grid; gap: 4px; color: #4b574f; font-size: 12px; font-weight: 850; }
 .danger-button { color: #b83342; border: 1px solid #f0b9c1; background: #fff0f2; padding: 0 12px; }
 .empty-state { display: flex; min-height: 140px; align-items: center; justify-content: center; border: 1px dashed #d6dfcf; border-radius: 8px; color: #657064; font-weight: 900; }
