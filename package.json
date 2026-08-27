@@ -9,10 +9,11 @@
     "preview": "npx http-server dist -p 4173 -a 127.0.0.1 -c-1"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "@vercel/blob": "^2.8.0",
     "esbuild": "^0.28.2",
+    "lucide-react": "^0.468.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "lucide-react": "^0.468.0"
-  },
-  "devDependencies": {}
+    "react-dom": "^19.0.0"
+  }
 }

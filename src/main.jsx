@@ -219,31 +219,57 @@ const submitAuth = async (event) => {
   });
 
   notify('登录成功');
-};  const submitOrder = () => {
-    if (!requireLogin()) return;
-    if (!cartItems.length) return notify('购物车为空');
-    const shippingFee = cartCount >= 5 ? 0 : 3000;
-    const order = {
-      id: `SB-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
-      username: activeUser,
-      customerPhone: saved.phone,
-      items: cartItems.map(({ product, qty }) => ({ id: product.id, brand: product.brand, name: product.displayTitle, spec: product.displaySpec, price: product.price, qty })),
-      subtotal,
-      shippingFee,
-      total: subtotal + shippingFee,
-      address: saved.addresses[0] || null,
-      payerName: '',
-      status: statuses[0],
-      transferConfirmed: false,
-      attribution: saved.attribution || attribution || getAttribution(),
-      createdAt: new Date().toISOString(),
-    };
-    saveJson(ordersKey, [order, ...loadJson(ordersKey, [])]);
+};  const submitOrder = async () => {
+  if (!requireLogin()) return;
+  if (!cartItems.length) return notify('购物车为空');
+
+  const shippingFee = cartCount >= 5 ? 0 : 3000;
+
+  const order = {
+    id: `SB-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
+    username: activeUser,
+    customerPhone: saved.phone,
+    items: cartItems.map(({ product, qty }) => ({
+      id: product.id,
+      brand: product.brand,
+      name: product.displayTitle,
+      spec: product.displaySpec,
+      price: product.price,
+      qty
+    })),
+    subtotal,
+    shippingFee,
+    total: subtotal + shippingFee,
+    address: saved.addresses[0] || null,
+    payerName: '',
+    status: statuses[0],
+    transferConfirmed: false,
+    attribution: saved.attribution || attribution || getAttribution(),
+    createdAt: new Date().toISOString(),
+  };
+
+  try {
+    const response = await fetch('/api/orders', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify(order)
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || '订单提交失败');
+    }
+
     setSaved((old) => ({ ...old, cart: {} }));
     notify('订单已提交');
     setPanel('profile');
-  };
-
+  } catch (error) {
+    notify(error.message);
+  }
+};
   if (location.pathname === '/admin') return <AdminPage />;
 
   return (
@@ -302,8 +328,31 @@ const submitAuth = async (event) => {
       </main>
       {panel === 'cart' && <Panel title="购物车" onClose={() => setPanel('')}><Cart items={cartItems} count={cartCount} subtotal={subtotal} onQty={updateCart} onSubmit={submitOrder} /></Panel>}
       {panel === 'favorites' && <Panel title="收藏" onClose={() => setPanel('')}><FavoriteList ids={saved.favorites} /></Panel>}
-      {panel === 'profile' && <Panel title="个人主页" onClose={() => setPanel('')}><Profile username={activeUser} saved={saved} setSaved={setSaved} notify={notify} logout={() => setActiveUser('')} /></Panel>}
-      {toast && <div className="toast">{toast}</div>}
+{panel === 'profile' && (
+  <Panel title="个人主页" onClose={() => setPanel('')}>
+    {activeUser ? (
+      <Profile
+        username={activeUser}
+        saved={saved}
+        setSaved={setSaved}
+        notify={notify}
+        logout={() => {
+          localStorage.removeItem(activeKey);
+          setActiveUser('');
+          setSaved(blankUser());
+        }}
+      />
+    ) : (
+      <AuthForm
+        auth={auth}
+        setAuth={setAuth}
+        onSendCode={sendCode}
+        onSubmit={submitAuth}
+        sending={sending}
+      />
+    )}
+  </Panel>
+)}      {toast && <div className="toast">{toast}</div>}
     </>
   );
 }
@@ -480,10 +529,40 @@ function Summary({ label, value, strong }) {
 }
 
 function AdminPage() {
-  const [orders, setOrders] = useState(() => loadJson(ordersKey, []));
-  const [analytics] = useState(() => loadJson(analyticsKey, { pageviews: [] }));
-  const [open, setOpen] = useState('');
-  const pageviews = analytics.pageviews || [];
+const [adminTab, setAdminTab] = useState('dashboard');
+const [orders, setOrders] = useState([]);
+const [ordersLoading, setOrdersLoading] = useState(true);
+const [ordersError, setOrdersError] = useState('');
+useEffect(() => {
+  const loadOrders = async () => {
+    try {
+      setOrdersLoading(true);
+      setOrdersError('');
+
+      const response = await fetch('/api/orders');
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '订单读取失败');
+      }
+
+      setOrders(data.orders || []);
+    } catch (error) {
+      setOrdersError(error.message);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  loadOrders();
+}, []);
+const [analytics] = useState(() => loadJson(analyticsKey, { pageviews: [] }));
+const [open, setOpen] = useState('');
+
+const [orderSearch, setOrderSearch] = useState('');
+const [statusFilter, setStatusFilter] = useState('全部');
+const [startDate, setStartDate] = useState('');
+const [endDate, setEndDate] = useState('');  const pageviews = analytics.pageviews || [];
   const pageviewSources = pageviews.reduce((acc, view) => {
     const source = view.source || '浏览器';
     acc[source] = (acc[source] || 0) + 1;
@@ -498,32 +577,457 @@ function AdminPage() {
     .filter((source) => counts[source])
     .map((source) => `${source} ${counts[source]}`)
     .join(' · ') || '暂无';
-  const update = (id, patch) => {
-    setOrders((old) => {
-      const next = old.map((order) => (order.id === id ? { ...order, ...patch } : order));
-      saveJson(ordersKey, next);
-      return next;
+const update = async (id, patch) => {
+  try {
+    const response = await fetch('/api/orders', {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        id,
+        ...patch
+      })
     });
-  };
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || '订单更新失败');
+    }
+
+    setOrders((old) =>
+      old.map((order) =>
+        order.id === id
+          ? { ...order, ...patch }
+          : order
+      )
+    );
+  } catch (error) {
+    alert(error.message);
+  }
+};
+
+const uploadShippingReceipt = async (orderId, file) => {
+  if (!file) return;
+
+  if (!file.type.startsWith('image/')) {
+    alert('请选择图片文件');
+    return;
+  }
+
+  try {
+    const uploadResponse = await fetch('/api/upload-receipt', {
+      method: 'POST',
+      headers: {
+        'content-type': file.type,
+        'x-filename': file.name
+      },
+      body: file
+    });
+
+    const uploadData = await uploadResponse.json();
+
+    if (!uploadResponse.ok) {
+      throw new Error(uploadData.error || '快递单照片上传失败');
+    }
+
+    await update(orderId, {
+      shippingReceiptUrl: uploadData.pathname
+    });
+
+    alert('快递单照片上传成功');
+  } catch (error) {
+    alert(error.message);
+  }
+};
+const filteredOrders = orders.filter((order) => {
+  const search = orderSearch.trim().toLowerCase();
+
+  const customerName =
+    order.customerName ||
+    order.username ||
+    '';
+
+  const phone =
+    order.customerPhone ||
+    order.addressPhone ||
+    '';
+  const matchesSearch =
+    !search ||
+    String(order.id || '').toLowerCase().includes(search) ||
+    String(phone).toLowerCase().includes(search) ||
+    String(customerName).toLowerCase().includes(search);
+
+  const matchesStatus =
+    statusFilter === '全部' ||
+    order.status === statusFilter;
+
+  const orderDate = order.createdAt
+    ? order.createdAt.slice(0, 10)
+    : '';
+
+  const matchesStart =
+    !startDate || orderDate >= startDate;
+
+  const matchesEnd =
+    !endDate || orderDate <= endDate;
+
+  return matchesSearch && matchesStatus && matchesStart && matchesEnd;
+});
   return (
     <div className="admin-page">
       <header className="admin-topbar"><a className="admin-brand" href="/">skinbeauty</a><nav><a href="/">商城首页</a><a href="/admin">后台管理</a></nav></header>
-      <main className="admin-shell">
-        <header className="admin-header"><h1>客户订单</h1><p>共 {orders.length} 件订单</p></header>
-        <section className="analytics-cards">
-          <article><span>Pageview</span><strong>{pageviews.length}</strong><small>{sourceSummary(pageviewSources)}</small></article>
-          <article><span>客户来源</span><strong>{sourceSummary(orderSources)}</strong><small>下单时自动记录</small></article>
-          <article><span>最近访问</span><strong>{pageviews[0]?.source || '暂无'}</strong><small>{pageviews[0]?.landingPath || '等待新访客'}</small></article>
-        </section>
-        <section className="admin-order-list">
-          {orders.length ? orders.map((order) => (
-            <article className="admin-list-order" key={order.id}>
-              <div className="admin-list-row"><span>{order.status}</span><strong>{order.id}</strong><span>{order.username}</span><span>{order.attribution?.source || '未记录'}</span><span>{money(order.total)}</span><button onClick={() => setOpen(open === order.id ? '' : order.id)}>详情</button></div>
-              {open === order.id && <div className="admin-order-detail"><div>{order.items.map((item) => <p key={item.id}>{item.name} x {item.qty}</p>)}<p>来源：{order.attribution?.source || '未记录'}</p><p>入口：{order.attribution?.landingPath || '-'}</p><p>Referrer：{order.attribution?.referrer || '-'}</p></div><label><input type="checkbox" checked={order.transferConfirmed} onChange={(e) => update(order.id, { transferConfirmed: e.target.checked })} /> 确认已转账</label><select value={order.status} onChange={(e) => update(order.id, { status: e.target.value })}>{statuses.map((status) => <option key={status}>{status}</option>)}</select></div>}
-            </article>
-          )) : <div className="empty-state">暂无订单</div>}
-        </section>
-      </main>
+      <div className="admin-layout">
+  <aside className="admin-sidebar">
+    <button
+      className={adminTab === 'dashboard' ? 'active' : ''}
+      onClick={() => setAdminTab('dashboard')}
+    >
+      대시보드
+    </button>
+
+    <button
+      className={adminTab === 'analytics' ? 'active' : ''}
+      onClick={() => setAdminTab('analytics')}
+    >
+      전환분석
+    </button>
+
+    <button
+      className={adminTab === 'orders' ? 'active' : ''}
+      onClick={() => setAdminTab('orders')}
+    >
+      주문신청
+    </button>
+  </aside>
+
+ <main className="admin-shell">
+
+  {adminTab === 'dashboard' && (
+    <>
+      <header className="admin-header">
+        <h1>대시보드</h1>
+        <p>전체 주문 및 방문 현황을 확인할 수 있습니다.</p>
+      </header>
+
+      <section className="analytics-cards">
+        <article>
+          <span>전체 주문</span>
+          <strong>{orders.length}</strong>
+          <small>누적 주문 건수</small>
+        </article>
+
+        <article>
+          <span>Pageview</span>
+          <strong>{pageviews.length}</strong>
+          <small>{sourceSummary(pageviewSources)}</small>
+        </article>
+
+        <article>
+          <span>주문 유입경로</span>
+          <strong>{sourceSummary(orderSources)}</strong>
+          <small>주문 시 자동 기록</small>
+        </article>
+      </section>
+    </>
+  )}
+
+  {adminTab === 'analytics' && (
+    <>
+      <header className="admin-header">
+        <h1>전환분석</h1>
+        <p>방문 및 주문 전환 데이터를 확인할 수 있습니다.</p>
+      </header>
+
+      <section className="analytics-cards">
+        <article>
+          <span>Pageview</span>
+          <strong>{pageviews.length}</strong>
+          <small>{sourceSummary(pageviewSources)}</small>
+        </article>
+
+        <article>
+          <span>주문 유입경로</span>
+          <strong>{sourceSummary(orderSources)}</strong>
+          <small>주문 기준</small>
+        </article>
+
+        <article>
+          <span>최근 방문</span>
+          <strong>{pageviews[0]?.source || '없음'}</strong>
+          <small>{pageviews[0]?.landingPath || '방문 기록 없음'}</small>
+        </article>
+      </section>
+    </>
+  )}
+
+  {adminTab === 'orders' && (
+    <>
+      <header className="admin-header">
+        <h1>주문신청</h1>
+        <p>
+          전체 {orders.length}건 · 검색 결과 {filteredOrders.length}건
+        </p>
+      </header>
+
+      <section className="order-filters">
+        <div className="order-date-filter">
+          <label>
+            시작일
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </label>
+
+          <span>~</span>
+
+          <label>
+            종료일
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </label>
+        </div>
+
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          <option value="全部">전체 상태</option>
+          {statuses.map((status) => (
+            <option key={status} value={status}>
+              {status}
+            </option>
+          ))}
+        </select>
+
+        <input
+          className="order-search"
+          type="search"
+          value={orderSearch}
+          onChange={(e) => setOrderSearch(e.target.value)}
+          placeholder="주문번호, 휴대폰번호, 고객명 검색"
+        />
+
+        <button
+          type="button"
+          onClick={() => {
+            setStartDate('');
+            setEndDate('');
+            setStatusFilter('全部');
+            setOrderSearch('');
+          }}
+        >
+          초기화
+        </button>
+      </section>
+
+      <section className="admin-order-list">
+
+        <div className="admin-order-table-head">
+          <span>상태</span>
+          <span>주문번호</span>
+          <span>고객명</span>
+          <span>휴대폰번호</span>
+          <span>구매일</span>
+          <span>주소</span>
+          <span>총금액</span>
+          <span>상세</span>
+        </div>
+
+        {filteredOrders.length ? (
+          filteredOrders.map((order) => {
+         const customerName =
+  order.customerName ||
+  order.username ||
+  '-';
+
+const phone =
+  order.customerPhone ||
+  order.addressPhone ||
+  '-';
+
+const fullAddress =
+  [
+    order.postalCode,
+    order.roadAddress,
+    order.detailAddress
+  ]
+    .filter(Boolean)
+    .join(' ') || '-';
+            const purchaseDate = order.createdAt
+              ? new Date(order.createdAt).toLocaleString('ko-KR')
+              : '-';
+
+            return (
+              <article
+                className="admin-list-order"
+                key={order.id}
+              >
+                <div className="admin-order-table-row">
+                  <span>{order.status}</span>
+
+                  <strong>{order.id}</strong>
+
+                  <span>{customerName}</span>
+
+                  <span>{phone}</span>
+
+                  <span>{purchaseDate}</span>
+
+                  <span className="order-address">
+                    {fullAddress}
+                  </span>
+
+                  <strong>{money(order.total)}</strong>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOpen(open === order.id ? '' : order.id)
+                    }
+                  >
+                    {open === order.id ? '닫기' : '상세'}
+                  </button>
+                </div>
+
+                {open === order.id && (
+                  <div className="admin-order-detail">
+
+                    <div>
+                      <h3>고객 정보</h3>
+                      <p>아이디: {order.username || '-'}</p>
+                      <p>고객명: {customerName}</p>
+                      <p>휴대폰번호: {phone}</p>
+                      <p>주소: {fullAddress}</p>
+                    </div>
+
+                    <div>
+                      <h3>주문 정보</h3>
+                      <p>주문번호: {order.id}</p>
+                      <p>구매일: {purchaseDate}</p>
+                      <p>상품금액: {money(order.subtotal)}</p>
+                      <p>배송비: {money(order.shippingFee)}</p>
+                      <p>총금액: {money(order.total)}</p>
+                    </div>
+
+                    <div>
+                      <h3>구매 상품</h3>
+
+                      {order.items?.map((item) => (
+                        <p key={item.id}>
+                          {item.name}
+                          {item.spec ? ` / ${item.spec}` : ''}
+                          {' × '}
+                          {item.qty}
+                          {' / '}
+                          {money(item.price)}
+                        </p>
+                      ))}
+                    </div>
+
+                    <div>
+                      <h3>관리</h3>
+
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(order.transferConfirmed)}
+                          onChange={(e) =>
+                            update(order.id, {
+                              transferConfirmed: e.target.checked
+                            })
+                          }
+                        />
+                        입금 확인
+                      </label>
+
+                      <select
+                        value={order.status}
+                        onChange={(e) =>
+                          update(order.id, {
+                            status: e.target.value
+                          })
+                        }
+                      >
+                        {statuses.map((status) => (
+                          <option key={status} value={status}>
+                            {status}
+                          </option>
+                        ))}
+                      </select>
+{order.status === '已发货' && (
+  <div className="shipping-receipt-upload">
+    <label>
+      快递单照片
+      <input
+        type="file"
+        accept="image/*"
+        onChange={(e) =>
+          uploadShippingReceipt(
+            order.id,
+            e.target.files?.[0]
+          )
+        }
+      />
+    </label>
+
+ {order.shippingReceiptUrl && (
+  <div>
+    <p>✓ 已上传快递单照片</p>
+
+    <button
+      type="button"
+      onClick={() =>
+        window.open(
+          `/api/receipt-image?pathname=${encodeURIComponent(order.shippingReceiptUrl)}`,
+          '_blank'
+        )
+      }
+    >
+      查看快递单照片
+    </button>
+  </div>
+)}
+  </div>
+)}
+                    </div>
+
+                    <div>
+                      <h3>유입 정보</h3>
+                      <p>
+                        유입경로: {order.attribution?.source || '미기록'}
+                      </p>
+                      <p>
+                        랜딩페이지: {order.attribution?.landingPath || '-'}
+                      </p>
+                      <p>
+                        Referrer: {order.attribution?.referrer || '-'}
+                      </p>
+                    </div>
+
+                  </div>
+                )}
+              </article>
+            );
+          })
+        ) : (
+          <div className="empty-state">
+            조건에 맞는 주문이 없습니다.
+          </div>
+        )}
+
+      </section>
+    </>
+  )}
+
+</main>
+       </div>
     </div>
   );
 }
