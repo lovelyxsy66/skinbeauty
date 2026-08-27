@@ -34,6 +34,9 @@ const analyticsKey = 'skinbeauty:analytics';
 const sessionKey = 'skinbeauty:session-id';
 const userKey = (name) => `olive-deal-shop:${name}`;
 const statuses = ['接单前', '已发货', '快递单照片登录', '已送达', '交易完成'];
+const STATUS_SHIPPED = '已发货';
+const STATUS_RECEIPT = '快递单照片登录';
+const needsShippingReceipt = (status) => status === STATUS_SHIPPED || status === STATUS_RECEIPT;
 
 const money = (value) => `₩${Number(value || 0).toLocaleString('ko-KR')}`;
 const padTime = (value) => String(value).padStart(2, '0');
@@ -599,9 +602,9 @@ function Profile({ username, saved, setSaved, notify, logout }) {
   useEffect(() => {
     let alive = true;
 
-    const loadOrders = async () => {
+    const loadOrders = async ({ silent = false } = {}) => {
       try {
-        setOrdersLoading(true);
+        if (!silent) setOrdersLoading(true);
         const response = await fetch('/api/orders');
         const data = await response.json();
 
@@ -620,17 +623,27 @@ function Profile({ username, saved, setSaved, notify, logout }) {
         const localOrders = loadJson(ordersKey, []).filter((order) => order.username === username);
         if (alive) {
           setOrders(localOrders);
-          notify(error.message || '订单读取失败');
+          if (!silent) notify(error.message || '订单读取失败');
         }
       } finally {
-        if (alive) setOrdersLoading(false);
+        if (alive && !silent) setOrdersLoading(false);
       }
     };
 
     loadOrders();
+    const refresh = () => loadOrders({ silent: true });
+    const timer = setInterval(refresh, 4000);
+    const refreshWhenVisible = () => {
+      if (!document.hidden) refresh();
+    };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
 
     return () => {
       alive = false;
+      clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
     };
   }, [username, saved.phone]);
 
@@ -755,6 +768,22 @@ function Profile({ username, saved, setSaved, notify, logout }) {
               </div>
             </div>
             {visibleAccounts[order.id] && <TransferAccountBox amount={order.total} notify={notify} />}
+            {order.shippingReceiptUrl && (
+              <div className="submitted-shipping-receipt">
+                <span>快递单照片已登录</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    window.open(
+                      `/api/receipt-image?pathname=${encodeURIComponent(order.shippingReceiptUrl)}`,
+                      '_blank'
+                    )
+                  }
+                >
+                  查看快递单照片
+                </button>
+              </div>
+            )}
             <div className="submitted-order-items">
               {(Array.isArray(order.items) ? order.items : []).map((item) => (
                 <span key={item.id}>
@@ -977,6 +1006,7 @@ const uploadShippingReceipt = async (orderId, file) => {
     }
 
     await update(orderId, {
+      status: STATUS_RECEIPT,
       shippingReceiptUrl: uploadData.pathname
     }, `快递单照片已上传：${file.name}`);
 
@@ -1202,16 +1232,18 @@ const filteredOrders = orders.filter((order) => {
                 <div className="admin-order-table-row">
                   <span className="status-cell">
                     <strong>{order.status}</strong>
-                    {order.status === '已发货' && (
-                      <label className="inline-upload">
-                        上传快递单
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => uploadShippingReceipt(order.id, e.target.files?.[0])}
-                        />
+                    {needsShippingReceipt(order.status) && (
+                      <label className="inline-upload" htmlFor={`shipping-upload-${order.id}`}>
+                        {order.shippingReceiptUrl ? '更换快递单' : '上传快递单'}
                       </label>
                     )}
+                    <input
+                      id={`shipping-upload-${order.id}`}
+                      className="visually-hidden-file"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => uploadShippingReceipt(order.id, e.target.files?.[0])}
+                    />
                   </span>
 
                   <strong>{order.id}</strong>
@@ -1302,11 +1334,17 @@ const filteredOrders = orders.filter((order) => {
 
                       <select
                         value={order.status}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const nextStatus = e.target.value;
                           update(order.id, {
-                            status: e.target.value
-                          }, `订单状态变更：${order.status} → ${e.target.value}`)
-                        }
+                            status: nextStatus
+                          }, `订单状态变更：${order.status} → ${nextStatus}`);
+                          if (nextStatus === STATUS_RECEIPT) {
+                            setTimeout(() => {
+                              document.getElementById(`shipping-upload-${order.id}`)?.click();
+                            }, 80);
+                          }
+                        }}
                       >
                         {statuses.map((status) => (
                           <option key={status} value={status}>
@@ -1314,11 +1352,12 @@ const filteredOrders = orders.filter((order) => {
                           </option>
                         ))}
                       </select>
-{order.status === '已发货' && (
+{needsShippingReceipt(order.status) && (
   <div className="shipping-receipt-upload">
     <label>
-      快递单照片
+      {order.shippingReceiptUrl ? '更换快递单照片' : '快递单照片登录'}
       <input
+        id={`shipping-detail-upload-${order.id}`}
         type="file"
         accept="image/*"
         onChange={(e) =>

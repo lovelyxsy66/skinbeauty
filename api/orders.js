@@ -22,6 +22,7 @@ export default async function handler(req, res) {
   try {
     const sql = getSql();
     await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS status_events JSONB DEFAULT '[]'::jsonb`;
+    await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_receipt_url TEXT DEFAULT ''`;
 
     if (req.method === 'GET') {
       const rows = await sql`

@@ -174,6 +174,9 @@ main { max-width: 1440px; margin: 0 auto; padding: 18px clamp(16px, 4vw, 48px) 4
 .submitted-order-actions span { border-radius: 999px; background: #edf7df; padding: 4px 8px; color: #236739; font-size: 12px; font-weight: 900; white-space: nowrap; }
 .submitted-order-actions button { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; border: 1px solid #f0b9c1; border-radius: 7px; background: #fff0f2; color: #b83342; padding: 0 8px; font-size: 12px; font-weight: 900; white-space: nowrap; }
 .submitted-order-actions .account-toggle-button { border-color: #cfe1cf; background: #f5faf2; color: #1f6f48; }
+.submitted-shipping-receipt { display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid #d7e6ff; border-radius: 8px; background: #f3f7ff; padding: 9px 10px; }
+.submitted-shipping-receipt span { color: #1d4ed8; font-size: 12px; font-weight: 900; }
+.submitted-shipping-receipt button { min-height: 30px; border: 1px solid #1d4ed8; border-radius: 7px; background: #1d4ed8; color: #fff; padding: 0 10px; font-size: 12px; font-weight: 900; white-space: nowrap; }
 .submitted-order-items { display: grid; gap: 4px; color: #4b574f; font-size: 12px; font-weight: 850; }
 .submitted-order-items span { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 8px; align-items: center; }
 .submitted-order-items strong { color: #18211b; font-size: 12px; }
@@ -226,6 +229,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 18px clamp(16px, 4vw, 48px) 4
 .status-cell strong { display: inline-flex; width: fit-content; align-items: center; border-radius: 999px; background: #dbeafe; padding: 3px 8px; color: #1d4ed8; font-size: 12px; font-weight: 700; }
 .inline-upload { position: relative; display: inline-flex; width: fit-content; min-height: 24px; align-items: center; border: 1px solid #c8d5c8; border-radius: 7px; padding: 0 7px; color: #1f6f48; background: #f2f8f1; font-size: 11px; font-weight: 700; overflow: hidden; }
 .inline-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.visually-hidden-file { position: fixed; left: -9999px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .order-address { white-space: nowrap; }
 .admin-order-table-row button { min-height: 32px; border-radius: 7px; font-size: 12px; }
 .admin-delete-btn { border-color: #fee2e2 !important; background: #fff1f2 !important; color: #b91c1c !important; }
