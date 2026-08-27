@@ -12,7 +12,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const filename = req.headers['x-filename'];
+    const rawFilename = req.headers['x-filename'];
+    const filename = rawFilename ? decodeURIComponent(String(rawFilename)) : '';
 
     if (!filename) {
       return json(res, 400, { error: '缺少文件名' });

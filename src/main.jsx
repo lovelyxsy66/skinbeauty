@@ -994,7 +994,7 @@ const uploadShippingReceipt = async (orderId, file) => {
       method: 'POST',
       headers: {
         'content-type': file.type,
-        'x-filename': file.name
+        'x-filename': encodeURIComponent(file.name)
       },
       body: file
     });
