@@ -495,7 +495,7 @@ function ProductRow({ product, qty, liked, onQty, onLike }) {
           ) : (
             <button className="buy-button" onClick={() => onQty(product.id, 1)}>
               <ShoppingBag size={17} />
-              <span>加入购物车</span>
+              <span>添加购物车</span>
             </button>
           )}
           <button className={liked ? 'icon-button liked' : 'icon-button'} onClick={() => onLike(product.id)} aria-label="收藏"><Heart size={18} fill={liked ? 'currentColor' : 'none'} /></button>

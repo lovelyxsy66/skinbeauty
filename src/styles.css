@@ -315,7 +315,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 18px clamp(16px, 4vw, 48px) 4
   .product-rank { display: none; }
   .product-image { width: 74px; height: 74px; border: 1px solid #edf1eb; border-radius: 6px; }
   .product-image img { padding: 3px; }
-  .product-body { position: relative; gap: 3px; align-content: start; padding: 0 38px 0 0; }
+  .product-body { position: relative; gap: 3px; align-content: start; padding: 0 92px 0 0; }
   .product-meta { justify-content: flex-start; gap: 5px; color: #101511; font-size: 12px; line-height: 1.1; font-weight: 950; }
   .product-meta span { max-width: 118px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .product-meta span:first-child::after { content: " |"; color: #9aa19b; font-weight: 750; }
@@ -347,27 +347,34 @@ main { max-width: 1440px; margin: 0 auto; padding: 18px clamp(16px, 4vw, 48px) 4
     flex-direction: column;
     align-content: center;
     justify-content: center;
-    gap: 7px;
+    width: 82px;
+    gap: 6px;
     transform: translateY(-50%);
   }
-  .card-actions .icon-button { width: 28px; height: 28px; min-height: 28px; border: 0; background: transparent; color: #4f5a52; }
-  .card-actions .icon-button svg, .buy-button svg { width: 16px; height: 16px; }
+  .card-actions .icon-button { align-self: center; width: 28px; height: 28px; min-height: 28px; border: 0; background: transparent; color: #4f5a52; }
+  .card-actions .icon-button svg { width: 16px; height: 16px; }
   .buy-button {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
-    min-height: 28px;
-    padding: 0;
+    width: 82px;
+    height: 30px;
+    min-height: 30px;
+    gap: 3px;
+    padding: 0 6px;
     overflow: hidden;
-    color: transparent;
-    border: 0;
-    background: transparent;
+    color: #1f6f48;
+    border: 1px solid #cfe1cf;
+    border-radius: 7px;
+    background: #f5faf2;
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 1;
+    white-space: nowrap;
   }
-  .card-actions .buy-button { color: #4f5a52; }
-  .card-actions .buy-button span { display: none; }
-  .quantity { width: 28px; height: 28px; min-height: 28px; border: 0; background: #eef5ef; font-size: 11px; }
+  .buy-button svg { width: 13px; height: 13px; flex: 0 0 auto; color: #1f6f48; }
+  .card-actions .buy-button span { display: inline; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .quantity { align-self: flex-end; width: 42px; height: 28px; min-height: 28px; border: 0; background: #eef5ef; font-size: 11px; }
   .quantity button { display: none; }
   .quantity span { min-width: 0; color: #1f6f48; font-size: 12px; }
   .panel { width: 100vw; padding: 12px; }
