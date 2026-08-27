@@ -136,6 +136,7 @@ function App() {
   const [attribution, setAttribution] = useState(null);
   const [sending, setSending] = useState(false);
   const [shippingConfirmOpen, setShippingConfirmOpen] = useState(false);
+  const [paymentPrompt, setPaymentPrompt] = useState(null);
 
   useEffect(() => {
     setAttribution(recordPageView());
@@ -301,6 +302,7 @@ const submitOrder = async ({ skipShippingConfirm = false } = {}) => {
 
     setSaved((old) => ({ ...old, cart: {} }));
     notify('订单已提交');
+    setPaymentPrompt(order);
     setPanel('profile');
   } catch (error) {
     notify(error.message);
@@ -362,7 +364,7 @@ const submitOrder = async ({ skipShippingConfirm = false } = {}) => {
           ))}
         </section>
       </main>
-      {panel === 'cart' && <Panel title="购物车" onClose={() => setPanel('')}><Cart items={cartItems} count={cartCount} subtotal={subtotal} onQty={updateCart} onSubmit={submitOrder} /></Panel>}
+      {panel === 'cart' && <Panel title="购物车" onClose={() => setPanel('')}><Cart items={cartItems} count={cartCount} subtotal={subtotal} onQty={updateCart} onSubmit={submitOrder} notify={notify} /></Panel>}
       {panel === 'favorites' && <Panel title="收藏" onClose={() => setPanel('')}><FavoriteList ids={saved.favorites} /></Panel>}
 {panel === 'profile' && (
   <Panel title="个人主页" onClose={() => setPanel('')}>
@@ -397,6 +399,13 @@ const submitOrder = async ({ skipShippingConfirm = false } = {}) => {
           onBrowse={() => setShippingConfirmOpen(false)}
         />
       )}
+      {paymentPrompt && (
+        <PaymentPrompt
+          order={paymentPrompt}
+          onClose={() => setPaymentPrompt(null)}
+          notify={notify}
+        />
+      )}
     </>
   );
 }
@@ -410,6 +419,48 @@ function CheckoutConfirm({ remaining, onContinue, onBrowse }) {
         <div className="checkout-confirm-actions">
           <button type="button" className="danger-button" onClick={onContinue}>继续结账</button>
           <button type="button" className="checkout-button" onClick={onBrowse}>再逛逛</button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function TransferAccountBox({ amount, notify }) {
+  const copyAccount = async () => {
+    try {
+      await navigator.clipboard.writeText(bank.copyLine);
+      notify?.('转账账户已复制');
+    } catch {
+      notify?.('复制失败，请手动复制账户信息');
+    }
+  };
+
+  return (
+    <div className="transfer-account-box">
+      <div>
+        <span>转账账户</span>
+        <strong>{bank.copyLine}</strong>
+      </div>
+      {amount != null && (
+        <div>
+          <span>需转账金额</span>
+          <strong>{money(amount)}</strong>
+        </div>
+      )}
+      <button type="button" onClick={copyAccount}>复制号码+银行名</button>
+    </div>
+  );
+}
+
+function PaymentPrompt({ order, onClose, notify }) {
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <section className="checkout-confirm payment-prompt" role="dialog" aria-modal="true" aria-label="转账信息">
+        <h3>订单已提交</h3>
+        <p>请按下面的账户信息转账，金额核对后我们会处理订单。</p>
+        <TransferAccountBox amount={order.total} notify={notify} />
+        <div className="checkout-confirm-actions single">
+          <button type="button" className="checkout-button" onClick={onClose}>确认</button>
         </div>
       </section>
     </div>
@@ -515,7 +566,7 @@ function Panel({ title, children, onClose }) {
   return <aside className="panel"><div className="panel-header"><h2>{title}</h2><button className="icon-button" onClick={onClose} aria-label="关闭"><X size={18} /></button></div>{children}</aside>;
 }
 
-function Cart({ items, count, subtotal, onQty, onSubmit }) {
+function Cart({ items, count, subtotal, onQty, onSubmit, notify }) {
   const shippingFee = count >= 5 ? 0 : 3000;
   return (
     <div className="panel-body">
@@ -527,7 +578,7 @@ function Cart({ items, count, subtotal, onQty, onSubmit }) {
         <Summary label="商品金额" value={money(subtotal)} />
         <Summary label="运费" value={shippingFee ? money(shippingFee) : '包邮'} />
         <Summary label="最终金额" value={money(subtotal + shippingFee)} strong />
-        <div className="copy-row"><span>转账账户</span><strong>{bank.copyLine}</strong></div>
+        <TransferAccountBox amount={subtotal + shippingFee} notify={notify} />
         <button className="checkout-button" onClick={onSubmit}>提交订单</button>
       </div>
     </div>
@@ -543,6 +594,7 @@ function Profile({ username, saved, setSaved, notify, logout }) {
   const [address, setAddress] = useState({ name: '', phone: '', zip: '', road: '', detail: '' });
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [visibleAccounts, setVisibleAccounts] = useState({});
 
   useEffect(() => {
     let alive = true;
@@ -689,12 +741,20 @@ function Profile({ username, saved, setSaved, notify, logout }) {
               <strong>{order.id}</strong>
               <div className="submitted-order-actions">
                 <span>{order.status}</span>
+                <button
+                  type="button"
+                  className="account-toggle-button"
+                  onClick={() => setVisibleAccounts((current) => ({ ...current, [order.id]: !current[order.id] }))}
+                >
+                  {visibleAccounts[order.id] ? '隐藏转账账户' : '显示转账账户'}
+                </button>
                 <button type="button" onClick={() => deleteSubmittedOrder(order.id)} aria-label="删除订单">
                   <Trash2 size={14} />
                   删除
                 </button>
               </div>
             </div>
+            {visibleAccounts[order.id] && <TransferAccountBox amount={order.total} notify={notify} />}
             <div className="submitted-order-items">
               {(Array.isArray(order.items) ? order.items : []).map((item) => (
                 <span key={item.id}>
