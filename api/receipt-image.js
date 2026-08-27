@@ -1,4 +1,5 @@
-﻿import { get } from '@vercel/blob';
+import { get } from '@vercel/blob';
+import { Readable } from 'node:stream';
 
 function json(res, status, body) {
   res.statusCode = status;
@@ -20,24 +21,23 @@ export default async function handler(req, res) {
 
     const result = await get(pathname, {
       access: 'private',
+      useCache: false,
       token: process.env.BLOB_READ_WRITE_TOKEN
     });
 
-    if (!result) {
+    if (!result || result.statusCode !== 200 || !result.stream) {
       return json(res, 404, { error: '找不到快递单照片' });
     }
 
     res.statusCode = 200;
-    res.setHeader(
-      'content-type',
-      result.blob.contentType || 'application/octet-stream'
-    );
+    res.setHeader('content-type', result.blob.contentType || 'application/octet-stream');
+    res.setHeader('cache-control', 'private, no-store');
 
     if (result.blob.size) {
       res.setHeader('content-length', String(result.blob.size));
     }
 
-    return result.stream.pipe(res);
+    return Readable.fromWeb(result.stream).pipe(res);
   } catch (error) {
     console.error(error);
 
